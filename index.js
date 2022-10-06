@@ -26,14 +26,20 @@ const database = getDatabase(app);
 var c = document.getElementById("chat");
 var pc = document.getElementById("prevChat");
 var smf;
-
+var nick = "Anonymous User";
+var send;
 var chatRef;
 
 window.messageSent = function messageSent() {
-    smf = document.forms["sendmessageform"]["sendmessage"].value;
+    smf = String(document.forms["sendmessageform"]["sendmessage"].value);
+    send = "<b>" + nick + ":</b> " + smf;
     set(chatRef, {
-        recentMessage: String(smf)
+        recentMessage: send
     });
+}
+
+window.nickChanged = function nickChanged() {
+    nick = String(document.forms["changenickform"]["changenick"].value);
 }
 
 function init() {
