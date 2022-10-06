@@ -29,10 +29,14 @@ var smf;
 var nick = "Anonymous User";
 var send;
 var chatRef;
+var today;
+var options
 
 window.messageSent = function messageSent() {
     smf = String(document.forms["sendmessageform"]["sendmessage"].value);
-    send = "<b>" + nick + ":</b> " + smf;
+    today  = new Date();
+    options = { weekday: undefined, year: 'numeric', month: 'numeric', day: 'numeric', hour: "numeric", minute: "numeric", second: "numeric" };
+    send = today.toLocaleDateString("en-US", options) + " <b>" + nick + ":</b> " + smf;
     set(chatRef, {
         recentMessage: send
     });
