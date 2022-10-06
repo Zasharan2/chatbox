@@ -1,0 +1,15 @@
+<!DOCTYPE html>
+<html lang = "en">
+    <head>
+        <title>Chat</title>
+    </head>
+    <body>
+        <p id = "prevChat"></p>
+        <p id = "chat"></p>
+        <form id = "sendmessageform">
+            <input type = "text", id = "sendmessage", name = "sendmessage", onsubmit = "messageSent()", placeholder = "Type here...", required>
+            <input type = "button", id = "button", name = "button", onclick = "messageSent()", value = "Send Message", required>
+        </form>
+        <script src = "index.js", type = "module"></script>
+    </body>
+</html>
