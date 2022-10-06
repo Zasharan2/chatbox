@@ -23,7 +23,7 @@ const auth = getAuth(app);
 // Initialize Realtime Database and get a reference to the service
 const database = getDatabase(app);
 
-var c = document.getElementById("chat");
+var nd = document.getElementById("nickdisplay");
 var pc = document.getElementById("prevChat");
 var smf;
 var nick = "Anonymous User";
@@ -36,10 +36,12 @@ window.messageSent = function messageSent() {
     set(chatRef, {
         recentMessage: send
     });
+    document.getElementById("sendmessageform").reset();
 }
 
 window.nickChanged = function nickChanged() {
     nick = String(document.forms["changenickform"]["changenick"].value);
+    nd.innerHTML = "Current Nickname: <b>" + nick + "</b>";
 }
 
 function init() {
