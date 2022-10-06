@@ -42,6 +42,7 @@ window.messageSent = function messageSent() {
 window.nickChanged = function nickChanged() {
     nick = String(document.forms["changenickform"]["changenick"].value);
     nd.innerHTML = "Current Nickname: <b>" + nick + "</b>";
+    document.getElementById("changenickform").reset();
 }
 
 function init() {
