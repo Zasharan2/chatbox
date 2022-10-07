@@ -111,7 +111,7 @@ var smform;
 var ncform;
 
 function loadchatroom(chatName) {
-    cont.innerHTML = '<p id = "chat"></p><form id = "sendmessageform"><input type = "text", id = "sendmessage", name = "sendmessage", placeholder = "Message here...", required, autocomplete = "off"><input type = "submit", id = "smbutton", name = "button", value = "Send Message", required></form><form id = "changenickform"><input type = "text", id = "changenick", name = "changenick", placeholder = "Set nickname...", required, autocomplete = "off"><input type = "submit", id = "cnbutton", name = "button", value = "Set Nickname", required></form><p id = "nickdisplay">Current Nickname: <b>Anonymous User</b></p><p id = "codedisplay"></p>';
+    cont.innerHTML = '<p id = "chat"><b>Please note that you will not be able to see messages sent before the tab was opened. It is recommended to keep this tab running in the background, if you do not wish to miss out.</b></p><form id = "sendmessageform"><input type = "text", id = "sendmessage", name = "sendmessage", placeholder = "Message here...", required, autocomplete = "off"><input type = "submit", id = "smbutton", name = "button", value = "Send Message", required></form><form id = "changenickform"><input type = "text", id = "changenick", name = "changenick", placeholder = "Set nickname...", required, autocomplete = "off"><input type = "submit", id = "cnbutton", name = "button", value = "Set Nickname", required></form><p id = "nickdisplay">Current Nickname: <b>Anonymous User</b></p><p id = "codedisplay"></p>';
 
     nd = document.getElementById("nickdisplay");
     cd = document.getElementById("codedisplay");
