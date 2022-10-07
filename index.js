@@ -23,37 +23,64 @@ const auth = getAuth(app);
 // Initialize Realtime Database and get a reference to the service
 const database = getDatabase(app);
 
-var nd = document.getElementById("nickdisplay");
-var pc = document.getElementById("prevChat");
+var cont = document.getElementById("container");
+var nd;
+var pc;
 var smf;
 var nick = "Anonymous User";
 var send;
 var chatRef;
 var today;
-var options
+var options;
 
-var smform = document.getElementById("sendmessageform");
-smform.addEventListener("submit", (e) => {
+var smform;
+var ncform;
+
+var crform = document.getElementById("createroomform");
+crform.addEventListener("submit", (e) => {
     e.preventDefault();
     e.stopImmediatePropagation();
-    smf = String(document.forms["sendmessageform"]["sendmessage"].value);
-    today  = new Date();
-    options = { weekday: undefined, year: 'numeric', month: 'numeric', day: 'numeric', hour: "numeric", minute: "numeric", second: "numeric" };
-    send = today.toLocaleDateString("en-US", options) + " <b>" + nick + ":</b> " + smf;
-    set(chatRef, {
-        recentMessage: send
+
+    loadchatroom();
+
+    crform.reset();
+});
+
+function loadcreateroom() {
+    
+}
+
+function loadchatroom() {
+    cont.innerHTML = '<p id = "prevChat"></p><form id = "sendmessageform"><input type = "text", id = "sendmessage", name = "sendmessage", placeholder = "Message here...", required, autocomplete = "off"><input type = "submit", id = "smbutton", name = "button", value = "Send Message", required></form><form id = "changenickform"><input type = "text", id = "changenick", name = "changenick", placeholder = "Set nickname...", required, autocomplete = "off"><input type = "submit", id = "cnbutton", name = "button", value = "Set Nickname", required></form><p id = "nickdisplay">Current Nickname: <b>Anonymous User</b></p>';
+
+    nd = document.getElementById("nickdisplay");
+    pc = document.getElementById("prevChat");
+    
+    smform = document.getElementById("sendmessageform");
+    smform.addEventListener("submit", (e) => {
+        e.preventDefault();
+        e.stopImmediatePropagation();
+        smf = String(document.forms["sendmessageform"]["sendmessage"].value);
+        today  = new Date();
+        options = { weekday: undefined, year: 'numeric', month: 'numeric', day: 'numeric', hour: "numeric", minute: "numeric", second: "numeric" };
+        send = today.toLocaleDateString("en-US", options) + " <b>" + nick + ":</b> " + smf;
+        set(chatRef, {
+            recentMessage: send
+        });
+        smform.reset();
     });
-    document.getElementById("sendmessageform").reset();
-})
 
-var ncform = document.getElementById("changenickform");
-ncform.addEventListener("submit", (e) => {
-    e.preventDefault();
-    e.stopImmediatePropagation();
-    nick = String(document.forms["changenickform"]["changenick"].value);
-    nd.innerHTML = "Current Nickname: <b>" + nick + "</b>";
-    document.getElementById("changenickform").reset();
-})
+    ncform = document.getElementById("changenickform");
+    ncform.addEventListener("submit", (e) => {
+        e.preventDefault();
+        e.stopImmediatePropagation();
+        nick = String(document.forms["changenickform"]["changenick"].value);
+        nd.innerHTML = "Current Nickname: <b>" + nick + "</b>";
+        ncform.reset();
+    });
+
+    init();
+}
 
 function init() {
     
@@ -103,5 +130,3 @@ function init() {
         console.log(errorCode, errorMessage);
     });
 }
-
-init()
