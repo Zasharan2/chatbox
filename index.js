@@ -1,7 +1,7 @@
 // Import the functions you need from the SDKs you need
 import { initializeApp } from "https://www.gstatic.com/firebasejs/9.8.4/firebase-app.js";
 import { getAuth, signInAnonymously, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/9.8.4/firebase-auth.js";
-import { getDatabase, ref, set, onDisconnect, onValue, onChildAdded, onChildRemoved } from "https://www.gstatic.com/firebasejs/9.8.4/firebase-database.js";
+import { getDatabase, ref, set, onDisconnect, onValue, onChildAdded, onChildRemoved, get, child } from "https://www.gstatic.com/firebasejs/9.8.4/firebase-database.js";
 
 // Your web app's Firebase configuration
 const firebaseConfig = {
@@ -24,37 +24,98 @@ const auth = getAuth(app);
 const database = getDatabase(app);
 
 var cont = document.getElementById("container");
+
+var crbform = document.getElementById("createroombuttonform");
+crbform.addEventListener("submit", (e) => {
+    e.preventDefault();
+    e.stopImmediatePropagation();
+
+    loadcreateroom();
+//    loadchatroom(Date.now());
+
+    crbform.reset();
+});
+
+var jrbform = document.getElementById("joinroombuttonform");
+jrbform.addEventListener("submit", (e) => {
+    e.preventDefault();
+    e.stopImmediatePropagation();
+
+    loadjoinroom();
+
+    jrbform.reset();
+});
+
+var crform;
+
+function loadcreateroom() {
+    cont.innerHTML = '<form id = "createroomform"><input type = "text", id = "roomnameinput", name = "roomnameinput", placeholder = "Room code", required, autocomplete = "off", size = "30px"/><br><input type = "submit", id = "cr", name = "button", value = "Create Room", required/></form>'
+
+    crform = document.getElementById("createroomform");
+    crform.addEventListener("submit", (e) => {
+        var joinCode = String(document.forms["createroomform"]["roomnameinput"].value);
+        if ((joinCode.length > 0)) {
+            e.preventDefault();
+            e.stopImmediatePropagation();
+            get(child(ref(database), `chats/${joinCode}`)).then((snapshot) => {
+                if (!snapshot.exists()) {
+                    e.preventDefault();
+                    e.stopImmediatePropagation();
+
+                    loadchatroom(joinCode);
+        
+                    crform.reset();
+                }
+            });
+            crform.reset();
+        }
+    });
+}
+
+var jrform;
+
+function loadjoinroom() {
+    cont.innerHTML = '<form id = "joinroomform"><input type = "text", id = "roomnameinput", name = "roomnameinput", placeholder = "Room code", required, autocomplete = "off", size = "30px"/><br><input type = "submit", id = "cr", name = "button", value = "Join Room", required/></form>'
+
+    jrform = document.getElementById("joinroomform");
+    jrform.addEventListener("submit", (e) => {
+        var joinCode = String(document.forms["joinroomform"]["roomnameinput"].value);
+        if ((joinCode.length > 0)) {
+            e.preventDefault();
+            e.stopImmediatePropagation();
+            get(child(ref(database), `chats/${joinCode}`)).then((snapshot) => {
+                if (snapshot.exists()) {
+                    e.preventDefault();
+                    e.stopImmediatePropagation();
+
+                    loadchatroom(joinCode);
+        
+                    jrform.reset();
+                }
+            });
+            jrform.reset();
+        }
+    });
+}
+
 var nd;
-var pc;
+var cd;
+var chat;
 var smf;
 var nick = "Anonymous User";
 var send;
 var chatRef;
 var today;
 var options;
-
 var smform;
 var ncform;
 
-var crform = document.getElementById("createroomform");
-crform.addEventListener("submit", (e) => {
-    e.preventDefault();
-    e.stopImmediatePropagation();
-
-    loadchatroom();
-
-    crform.reset();
-});
-
-function loadcreateroom() {
-    
-}
-
-function loadchatroom() {
-    cont.innerHTML = '<p id = "prevChat"></p><form id = "sendmessageform"><input type = "text", id = "sendmessage", name = "sendmessage", placeholder = "Message here...", required, autocomplete = "off"><input type = "submit", id = "smbutton", name = "button", value = "Send Message", required></form><form id = "changenickform"><input type = "text", id = "changenick", name = "changenick", placeholder = "Set nickname...", required, autocomplete = "off"><input type = "submit", id = "cnbutton", name = "button", value = "Set Nickname", required></form><p id = "nickdisplay">Current Nickname: <b>Anonymous User</b></p>';
+function loadchatroom(chatName) {
+    cont.innerHTML = '<p id = "chat"></p><form id = "sendmessageform"><input type = "text", id = "sendmessage", name = "sendmessage", placeholder = "Message here...", required, autocomplete = "off"><input type = "submit", id = "smbutton", name = "button", value = "Send Message", required></form><form id = "changenickform"><input type = "text", id = "changenick", name = "changenick", placeholder = "Set nickname...", required, autocomplete = "off"><input type = "submit", id = "cnbutton", name = "button", value = "Set Nickname", required></form><p id = "nickdisplay">Current Nickname: <b>Anonymous User</b></p><p id = "codedisplay"></p>';
 
     nd = document.getElementById("nickdisplay");
-    pc = document.getElementById("prevChat");
+    cd = document.getElementById("codedisplay");
+    chat = document.getElementById("chat");
     
     smform = document.getElementById("sendmessageform");
     smform.addEventListener("submit", (e) => {
@@ -79,20 +140,22 @@ function loadchatroom() {
         ncform.reset();
     });
 
-    init();
+    cd.innerHTML = "Room code: <b>" + chatName + "</b>";
+
+    init(chatName);
 }
 
-function init() {
+function init(chatName) {
     
     onAuthStateChanged(auth, (user) => {
         if (user) {
 
-            chatRef = ref(database, `recentMessage`);
+            chatRef = ref(database, `chats/${chatName}`);
 
             // callback will occur whenever player ref changes
             onValue(chatRef, (snapshot) => {
                 for (var key in (snapshot.val() || {})) {
-                    pc.innerHTML += "<br></br>" + snapshot.val()[key];
+                    chat.innerHTML += "<br></br>" + snapshot.val()[key];
                 }
                 // for (var key in (snapshot.val() || {})) {
                 //     gamePlayers[key].name = snapshot.val()[key].name;
