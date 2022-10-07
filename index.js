@@ -32,7 +32,10 @@ var chatRef;
 var today;
 var options
 
-window.messageSent = function messageSent() {
+var smform = document.getElementById("sendmessageform");
+smform.addEventListener("submit", (e) => {
+    e.preventDefault();
+    e.stopImmediatePropagation();
     smf = String(document.forms["sendmessageform"]["sendmessage"].value);
     today  = new Date();
     options = { weekday: undefined, year: 'numeric', month: 'numeric', day: 'numeric', hour: "numeric", minute: "numeric", second: "numeric" };
@@ -41,13 +44,16 @@ window.messageSent = function messageSent() {
         recentMessage: send
     });
     document.getElementById("sendmessageform").reset();
-}
+})
 
-window.nickChanged = function nickChanged() {
+var ncform = document.getElementById("changenickform");
+ncform.addEventListener("submit", (e) => {
+    e.preventDefault();
+    e.stopImmediatePropagation();
     nick = String(document.forms["changenickform"]["changenick"].value);
     nd.innerHTML = "Current Nickname: <b>" + nick + "</b>";
     document.getElementById("changenickform").reset();
-}
+})
 
 function init() {
     
