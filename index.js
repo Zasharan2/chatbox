@@ -231,7 +231,10 @@ fsform.addEventListener("submit", (e) => {
 
 window.onfocus = function () {
     focused = true;
-    icon.href = "kijetesantakalu.png";
+    icon.href = "kijetesantakalu_black.png";
+    if (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches) {
+        icon.href = "kijetesantakalu_white.png";
+    }
 };
 
 window.onblur = function () {
