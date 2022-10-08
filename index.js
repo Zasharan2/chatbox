@@ -109,6 +109,8 @@ var today;
 var options;
 var smform;
 var ncform;
+var focused;
+var icon = document.getElementById("icon");
 
 function loadchatroom(chatName) {
     cont.innerHTML = '<p id = "chat"><b>Please note that you will not be able to see messages sent before the tab was opened. It is recommended to keep this tab running in the background, if you do not wish to miss out.</b></p><form id = "sendmessageform"><input type = "text", id = "sendmessage", name = "sendmessage", placeholder = "Message here...", required, autocomplete = "off"><input type = "submit", id = "smbutton", name = "button", value = "Send Message", required></form><form id = "changenickform"><input type = "text", id = "changenick", name = "changenick", placeholder = "Set nickname...", required, autocomplete = "off"><input type = "submit", id = "cnbutton", name = "button", value = "Set Nickname", required></form><p id = "nickdisplay">Current Nickname: <b>Anonymous User</b></p><p id = "codedisplay"></p>';
@@ -156,6 +158,9 @@ function init(chatName) {
             onValue(chatRef, (snapshot) => {
                 for (var key in (snapshot.val() || {})) {
                     chat.innerHTML += "<br></br>" + snapshot.val()[key];
+                    if (!focused) {
+                        icon.href = "kijetesantakalu_notif.png";
+                    }
                 }
                 // for (var key in (snapshot.val() || {})) {
                 //     gamePlayers[key].name = snapshot.val()[key].name;
@@ -223,3 +228,12 @@ fsform.addEventListener("submit", (e) => {
         fcss.href = "font_csms.css";
     }
 });
+
+window.onfocus = function () {
+    focused = true;
+    icon.href = "kijetesantakalu.png";
+};
+
+window.onblur = function () {
+    focused = false;
+};
