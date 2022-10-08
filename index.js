@@ -123,7 +123,7 @@ function loadchatroom(chatName) {
     smform.addEventListener("submit", (e) => {
         e.preventDefault();
         e.stopImmediatePropagation();
-        smf = sanitise(String(document.forms["sendmessageform"]["sendmessage"].value));
+        smf = linkify(sanitise(String(document.forms["sendmessageform"]["sendmessage"].value)));
         today  = new Date();
         options = { weekday: undefined, year: 'numeric', month: 'numeric', day: 'numeric', hour: "numeric", minute: "numeric", second: "numeric" };
         send = today.toLocaleDateString("en-US", options) + " <b>" + nick + ":</b> " + smf;
@@ -327,4 +327,15 @@ window.onblur = function () {
 
 function sanitise(dirty) {
     return dirty.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt').replace(/"/g, '&quot;').replace(/'/g, '&apos;');
+}
+
+function linkify(text) {
+    var urlRegex =/(\b(https?|ftp|file):\/\/[-A-Z0-9+&@#\/%?=~_|!:,.;]*[-A-Z0-9+&@#\/%=~_|])/ig;
+    return text.replace(urlRegex, function(url) {
+        if (url.match(/\.(jpeg|jpg|svg|webp|tif|heic|gif|png)$/) == null) {
+            return '<a href ="' + url + '">' + url + '</a>';
+        } else {
+            return '<img src="' + url + '">';
+        }
+    });
 }
