@@ -245,11 +245,6 @@ fsform.addEventListener("submit", (e) => {
             localStorage.setItem("fontpreference", "Comfortaa");
             break;
         }
-        case "Pusab": {
-            fcss.href = "font_psb.css";
-            localStorage.setItem("fontpreference", "Pusab");
-            break;
-        }
         case "Calibri": {
             fcss.href = "font_clb.css";
             localStorage.setItem("fontpreference", "Calibri");
@@ -302,10 +297,6 @@ if (!(localStorage.getItem("fontpreference") == null)) {
         }
         case "Comfortaa": {
             fcss.href = "font_comf.css";
-            break;
-        }
-        case "Pusab": {
-            fcss.href = "font_psb.css";
             break;
         }
         case "Calibri": {
