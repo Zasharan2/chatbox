@@ -53,7 +53,7 @@ function loadcreateroom() {
 
     crform = document.getElementById("createroomform");
     crform.addEventListener("submit", (e) => {
-        var joinCode = String(document.forms["createroomform"]["roomnameinput"].value);
+        var joinCode = sanitise(String(document.forms["createroomform"]["roomnameinput"].value));
         if ((joinCode.length > 0)) {
             e.preventDefault();
             e.stopImmediatePropagation();
@@ -79,7 +79,7 @@ function loadjoinroom() {
 
     jrform = document.getElementById("joinroomform");
     jrform.addEventListener("submit", (e) => {
-        var joinCode = String(document.forms["joinroomform"]["roomnameinput"].value);
+        var joinCode = sanitise(String(document.forms["joinroomform"]["roomnameinput"].value));
         if ((joinCode.length > 0)) {
             e.preventDefault();
             e.stopImmediatePropagation();
@@ -123,7 +123,7 @@ function loadchatroom(chatName) {
     smform.addEventListener("submit", (e) => {
         e.preventDefault();
         e.stopImmediatePropagation();
-        smf = String(document.forms["sendmessageform"]["sendmessage"].value);
+        smf = sanitise(String(document.forms["sendmessageform"]["sendmessage"].value));
         today  = new Date();
         options = { weekday: undefined, year: 'numeric', month: 'numeric', day: 'numeric', hour: "numeric", minute: "numeric", second: "numeric" };
         send = today.toLocaleDateString("en-US", options) + " <b>" + nick + ":</b> " + smf;
@@ -137,7 +137,7 @@ function loadchatroom(chatName) {
     ncform.addEventListener("submit", (e) => {
         e.preventDefault();
         e.stopImmediatePropagation();
-        nick = String(document.forms["changenickform"]["changenick"].value);
+        nick = sanitise(String(document.forms["changenickform"]["changenick"].value));
         localStorage.setItem("nicknamepreference", nick);
         nd.innerHTML = "Current Nickname: <b>" + nick + "</b>";
         ncform.reset();
@@ -146,6 +146,10 @@ function loadchatroom(chatName) {
     cd.innerHTML = "Room code: <b>" + chatName + "</b>";
 
     init(chatName);
+}
+
+if (!(localStorage.getItem("nicknamepreference") == null)) {
+    nick = localStorage.getItem("nicknamepreference");
 }
 
 function init(chatName) {
@@ -217,6 +221,16 @@ tsform.addEventListener("submit", (e) => {
     }
 });
 
+if (!(localStorage.getItem("themepreference") == null)) {
+    if (localStorage.getItem("themepreference") == "Light Mode") {
+        tcss.href = "theme_light.css";
+        ts.value = "1";
+    } else if (localStorage.getItem("themepreference") == "Dark Mode") {
+        tcss.href = "theme_dark.css";
+        ts.value = "0";
+    }
+}
+
 var fcss = document.getElementById("fontcss");
 var fsform = document.getElementById("fontselectform");
 var fs = document.getElementById("fontselect");
@@ -261,28 +275,6 @@ fsform.addEventListener("submit", (e) => {
     }
 });
 
-window.onfocus = function () {
-    focused = true;
-    icon.href = "kijetesantakalu_black.png";
-    if (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches) {
-        icon.href = "kijetesantakalu_white.png";
-    }
-};
-
-window.onblur = function () {
-    focused = false;
-};
-
-if (!(localStorage.getItem("themepreference") == null)) {
-    if (localStorage.getItem("themepreference") == "Light Mode") {
-        tcss.href = "theme_light.css";
-        ts.value = "1";
-    } else if (localStorage.getItem("themepreference") == "Dark Mode") {
-        tcss.href = "theme_dark.css";
-        ts.value = "0";
-    }
-}
-
 if (!(localStorage.getItem("fontpreference") == null)) {
     switch(localStorage.getItem("fontpreference")) {
         case "Arial": {
@@ -321,6 +313,18 @@ if (!(localStorage.getItem("fontpreference") == null)) {
     }
 }
 
-if (!(localStorage.getItem("nicknamepreference") == null)) {
-    nick = localStorage.getItem("nicknamepreference");
+window.onfocus = function () {
+    focused = true;
+    icon.href = "kijetesantakalu_black.png";
+    if (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches) {
+        icon.href = "kijetesantakalu_white.png";
+    }
+};
+
+window.onblur = function () {
+    focused = false;
+};
+
+function sanitise(dirty) {
+    return dirty.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt').replace(/"/g, '&quot;').replace(/'/g, '&apos;');
 }
