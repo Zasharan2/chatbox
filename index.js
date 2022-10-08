@@ -161,6 +161,7 @@ function init(chatName) {
                     if (!focused) {
                         icon.href = "kijetesantakalu_notif.png";
                     }
+                    document.getElementById("sendmessage").scrollIntoView();
                 }
                 // for (var key in (snapshot.val() || {})) {
                 //     gamePlayers[key].name = snapshot.val()[key].name;
