@@ -113,7 +113,7 @@ var focused = true;
 var icon = document.getElementById("icon");
 
 function loadchatroom(chatName) {
-    cont.innerHTML = '<p id = "chat"><b>Please note that you will not be able to see messages sent before the tab was opened. It is recommended to keep this tab running in the background, if you do not wish to miss out.</b></p><form id = "sendmessageform"><input type = "text", id = "sendmessage", name = "sendmessage", placeholder = "Message here...", required, autocomplete = "off"><input type = "submit", id = "smbutton", name = "button", value = "Send Message", required></form><form id = "changenickform"><input type = "text", id = "changenick", name = "changenick", placeholder = "Set nickname...", required, autocomplete = "off"><input type = "submit", id = "cnbutton", name = "button", value = "Set Nickname", required></form><p id = "nickdisplay">Current Nickname: <b>Anonymous User</b></p><p id = "codedisplay"></p>';
+    cont.innerHTML = '<p id = "chat"><b>Please note that you will not be able to see messages sent before the tab was opened. It is recommended to keep this tab running in the background, if you do not wish to miss out.</b></p><form id = "sendmessageform"><input type = "text", id = "sendmessage", name = "sendmessage", placeholder = "Message here...", required, autocomplete = "off"><input type = "submit", id = "smbutton", name = "button", value = "Send Message", required></form><form id = "changenickform"><input type = "text", id = "changenick", name = "changenick", placeholder = "Set nickname...", required, autocomplete = "off"><input type = "submit", id = "cnbutton", name = "button", value = "Set Nickname", required></form><p id = "nickdisplay">Current Nickname: <b>' + nick + '</b></p><p id = "codedisplay"></p>';
 
     nd = document.getElementById("nickdisplay");
     cd = document.getElementById("codedisplay");
@@ -138,6 +138,7 @@ function loadchatroom(chatName) {
         e.preventDefault();
         e.stopImmediatePropagation();
         nick = String(document.forms["changenickform"]["changenick"].value);
+        localStorage.setItem("nicknamepreference", nick);
         nd.innerHTML = "Current Nickname: <b>" + nick + "</b>";
         ncform.reset();
     });
@@ -209,8 +210,10 @@ tsform.addEventListener("submit", (e) => {
 
     if (ts.options[ts.selectedIndex].text == "Light Mode") {
         tcss.href = "theme_light.css";
+        localStorage.setItem("themepreference", "Light Mode");
     } else if (ts.options[ts.selectedIndex].text == "Dark Mode") {
         tcss.href = "theme_dark.css";
+        localStorage.setItem("themepreference", "Dark Mode");
     }
 });
 
@@ -221,20 +224,45 @@ fsform.addEventListener("submit", (e) => {
     e.preventDefault();
     e.stopImmediatePropagation();
 
-    if (fs.options[fs.selectedIndex].text == "Arial") {
-        fcss.href = "font_arial.css";
-    } else if (fs.options[fs.selectedIndex].text == "Times New Roman") {
-        fcss.href = "font_tnr.css";
-    } else if (fs.options[fs.selectedIndex].text == "Comic Sans MS") {
-        fcss.href = "font_csms.css";
-    } else if (fs.options[fs.selectedIndex].text == "Comfortaa") {
-        fcss.href = "font_comf.css";
-    } else if (fs.options[fs.selectedIndex].text == "Pusab") {
-        fcss.href = "font_psb.css";
-    } else if (fs.options[fs.selectedIndex].text == "Calibri") {
-        fcss.href = "font_clb.css";
-    } else if (fs.options[fs.selectedIndex].text == "Wire One") {
-        fcss.href = "font_wo.css";
+    switch(fs.options[fs.selectedIndex].text) {
+        case "Arial": {
+            fcss.href = "font_arial.css";
+            localStorage.setItem("fontpreference", "Arial");
+            break;
+        }
+        case "Times New Roman": {
+            fcss.href = "font_tnr.css";
+            localStorage.setItem("fontpreference", "Times New Roman");
+            break;
+        }
+        case "Comic Sans MS": {
+            fcss.href = "font_csms.css";
+            localStorage.setItem("fontpreference", "Comic Sans MS");
+            break;
+        }
+        case "Comfortaa": {
+            fcss.href = "font_comf.css";
+            localStorage.setItem("fontpreference", "Comfortaa");
+            break;
+        }
+        case "Pusab": {
+            fcss.href = "font_psb.css";
+            localStorage.setItem("fontpreference", "Pusab");
+            break;
+        }
+        case "Calibri": {
+            fcss.href = "font_clb.css";
+            localStorage.setItem("fontpreference", "Calibri");
+            break;
+        }
+        case "Wire One": {
+            fcss.href = "font_wo.css";
+            localStorage.setItem("fontpreference", "Wire One");
+            break;
+        }
+        default: {
+            break;
+        }
     }
 });
 
@@ -249,3 +277,51 @@ window.onfocus = function () {
 window.onblur = function () {
     focused = false;
 };
+
+if (!(localStorage.getItem("themepreference") == null)) {
+    if (localStorage.getItem("themepreference") == "Light Mode") {
+        tcss.href = "theme_light.css";
+    } else if (localStorage.getItem("themepreference") == "Dark Mode") {
+        tcss.href = "theme_dark.css";
+    }
+}
+
+if (!(localStorage.getItem("fontpreference") == null)) {
+    switch(localStorage.getItem("fontpreference")) {
+        case "Arial": {
+            fcss.href = "font_arial.css";
+            break;
+        }
+        case "Times New Roman": {
+            fcss.href = "font_tnr.css";
+            break;
+        }
+        case "Comic Sans MS": {
+            fcss.href = "font_csms.css";
+            break;
+        }
+        case "Comfortaa": {
+            fcss.href = "font_comf.css";
+            break;
+        }
+        case "Pusab": {
+            fcss.href = "font_psb.css";
+            break;
+        }
+        case "Calibri": {
+            fcss.href = "font_clb.css";
+            break;
+        }
+        case "Wire One": {
+            fcss.href = "font_wo.css";
+            break;
+        }
+        default: {
+            break;
+        }
+    }
+}
+
+if (!(localStorage.getItem("nicknamepreference") == null)) {
+    nick = localStorage.getItem("nicknamepreference");
+}
