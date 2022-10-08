@@ -109,7 +109,7 @@ var today;
 var options;
 var smform;
 var ncform;
-var focused;
+var focused = true;
 var icon = document.getElementById("icon");
 
 function loadchatroom(chatName) {
