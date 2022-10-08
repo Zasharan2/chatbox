@@ -276,8 +276,10 @@ window.onblur = function () {
 if (!(localStorage.getItem("themepreference") == null)) {
     if (localStorage.getItem("themepreference") == "Light Mode") {
         tcss.href = "theme_light.css";
+        ts.value = "1";
     } else if (localStorage.getItem("themepreference") == "Dark Mode") {
         tcss.href = "theme_dark.css";
+        ts.value = "0";
     }
 }
 
@@ -285,26 +287,32 @@ if (!(localStorage.getItem("fontpreference") == null)) {
     switch(localStorage.getItem("fontpreference")) {
         case "Arial": {
             fcss.href = "font_arial.css";
+            fs.value = "0";
             break;
         }
         case "Times New Roman": {
             fcss.href = "font_tnr.css";
+            fs.value = "1";
             break;
         }
         case "Comic Sans MS": {
             fcss.href = "font_csms.css";
+            fs.value = "2";
             break;
         }
         case "Comfortaa": {
             fcss.href = "font_comf.css";
+            fs.value = "3";
             break;
         }
         case "Calibri": {
             fcss.href = "font_clb.css";
+            fs.value = "4";
             break;
         }
         case "Wire One": {
             fcss.href = "font_wo.css";
+            fs.value = "5";
             break;
         }
         default: {
