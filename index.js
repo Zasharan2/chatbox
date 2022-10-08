@@ -227,6 +227,14 @@ fsform.addEventListener("submit", (e) => {
         fcss.href = "font_tnr.css";
     } else if (fs.options[fs.selectedIndex].text == "Comic Sans MS") {
         fcss.href = "font_csms.css";
+    } else if (fs.options[fs.selectedIndex].text == "Comfortaa") {
+        fcss.href = "font_comf.css";
+    } else if (fs.options[fs.selectedIndex].text == "Pusab") {
+        fcss.href = "font_psb.css";
+    } else if (fs.options[fs.selectedIndex].text == "Calibri") {
+        fcss.href = "font_clb.css";
+    } else if (fs.options[fs.selectedIndex].text == "Wire One") {
+        fcss.href = "font_wo.css";
     }
 });
 
