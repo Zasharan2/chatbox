@@ -2,17 +2,43 @@
 <html lang = "en">
     <head>
         <title>Chat</title>
+
+        <!-- Theme css file -->
+        <link id = "themecss", href = "theme_light.css", rel = "stylesheet"></link>
+
+        <!-- Font css file -->
+        <link id = "fontcss", href = "font_arial.css", rel = "stylesheet"></link>
+        
         <link rel = "icon", href = "data:image/png;base64,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">
     </head>
     <body>
-        <div id = "container">
+        <div id = "pagecontainer">
             <form id = "createroombuttonform">
                 <input type = "submit", id = "crbutton", name = "button", value = "Create Room", required>
             </form>
+            <br>
             <form id = "joinroombuttonform">
                 <input type = "submit", id = "jrbutton", name = "button", value = "Join Room", required>
             </form>
         </div>
+        <br>
+        <br>
+        <form id = "themeselectform">
+            <select id = "themeselect", name = "themeselect">
+                <option value = "Light Mode">Light Mode</option>
+                <option value = "Dark Mode">Dark Mode</option>
+            </select>
+            <input type = "submit", id = "tsbutton", name = "tsbutton", value = "Change Theme", required>
+        </form>
+        <br>
+        <form id = "fontselectform">
+            <select id = "fontselect", name = "fontselect">
+                <option value = "Arial">Arial</option>
+                <option value = "TNR">Times New Roman</option>
+                <option value = "CSMS">Comic Sans MS</option>
+            </select>
+            <input type = "submit", id = "fsbutton", name = "fsbutton", value = "Change Font", required>
+        </form>
         <script src = "index.js", type = "module"></script>
     </body>
 </html>

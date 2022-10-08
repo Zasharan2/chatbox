@@ -23,7 +23,7 @@ const auth = getAuth(app);
 // Initialize Realtime Database and get a reference to the service
 const database = getDatabase(app);
 
-var cont = document.getElementById("container");
+var cont = document.getElementById("pagecontainer");
 
 var crbform = document.getElementById("createroombuttonform");
 crbform.addEventListener("submit", (e) => {
@@ -49,7 +49,7 @@ jrbform.addEventListener("submit", (e) => {
 var crform;
 
 function loadcreateroom() {
-    cont.innerHTML = '<form id = "createroomform"><input type = "text", id = "roomnameinput", name = "roomnameinput", placeholder = "Room code", required, autocomplete = "off", size = "30px"/><br><input type = "submit", id = "cr", name = "button", value = "Create Room", required/></form>'
+    cont.innerHTML = '<form id = "createroomform"><input type = "text", id = "roomnameinput", name = "roomnameinput", placeholder = "Room code", required, autocomplete = "off", size = "30px"/><input type = "submit", id = "cr", name = "button", value = "Create Room", required/></form>'
 
     crform = document.getElementById("createroomform");
     crform.addEventListener("submit", (e) => {
@@ -75,7 +75,7 @@ function loadcreateroom() {
 var jrform;
 
 function loadjoinroom() {
-    cont.innerHTML = '<form id = "joinroomform"><input type = "text", id = "roomnameinput", name = "roomnameinput", placeholder = "Room code", required, autocomplete = "off", size = "30px"/><br><input type = "submit", id = "cr", name = "button", value = "Join Room", required/></form>'
+    cont.innerHTML = '<form id = "joinroomform"><input type = "text", id = "roomnameinput", name = "roomnameinput", placeholder = "Room code", required, autocomplete = "off", size = "30px"/><input type = "submit", id = "cr", name = "button", value = "Join Room", required/></form>'
 
     jrform = document.getElementById("joinroomform");
     jrform.addEventListener("submit", (e) => {
@@ -193,3 +193,33 @@ function init(chatName) {
         console.log(errorCode, errorMessage);
     });
 }
+
+var tcss = document.getElementById("themecss");
+var tsform = document.getElementById("themeselectform");
+var ts = document.getElementById("themeselect");
+tsform.addEventListener("submit", (e) => {
+    e.preventDefault();
+    e.stopImmediatePropagation();
+
+    if (ts.options[ts.selectedIndex].text == "Light Mode") {
+        tcss.href = "theme_light.css";
+    } else if (ts.options[ts.selectedIndex].text == "Dark Mode") {
+        tcss.href = "theme_dark.css";
+    }
+});
+
+var fcss = document.getElementById("fontcss");
+var fsform = document.getElementById("fontselectform");
+var fs = document.getElementById("fontselect");
+fsform.addEventListener("submit", (e) => {
+    e.preventDefault();
+    e.stopImmediatePropagation();
+
+    if (fs.options[fs.selectedIndex].text == "Arial") {
+        fcss.href = "font_arial.css";
+    } else if (fs.options[fs.selectedIndex].text == "Times New Roman") {
+        fcss.href = "font_tnr.css";
+    } else if (fs.options[fs.selectedIndex].text == "Comic Sans MS") {
+        fcss.href = "font_csms.css";
+    }
+});
