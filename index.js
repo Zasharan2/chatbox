@@ -113,6 +113,7 @@ var ccform;
 var logform;
 var logtext;
 var logdownloadelement;
+var toreplace;
 var colour = "ffffff";
 var focused = true;
 var icon = document.getElementById("icon");
@@ -165,8 +166,15 @@ function loadchatroom(chatName) {
         logdownloadelement = document.createElement("a");
         logtext = chat.innerHTML.replace("<b>Please note that you will not be able to see messages sent before the tab was opened. It is recommended to keep this tab running in the background, if you do not wish to miss out.</b>","").replace(/<br>/g,"\n");
         while (!(logtext.indexOf("<") == -1 && logtext.indexOf(">") == -1)) {
-            logtext = logtext.replace(logtext.substring(logtext.indexOf("<"), logtext.indexOf(">") + 1), "");
+            console.log("loop moment");
+            console.log(logtext);
+            toreplace = "";
+            if ((logtext.indexOf('<img src="') != -1) && (logtext.indexOf('<img src="') == logtext.indexOf("<"))) {
+                toreplace = logtext.substring(logtext.indexOf('<img src="') + 10, logtext.indexOf('">'));
+            }
+            logtext = logtext.replace(logtext.substring(logtext.indexOf("<"), logtext.indexOf(">") + 1), toreplace);
         }
+        console.log("hwere");
         logtext = logtext.slice(2);
         logtext = logtext.replace(/&amp;/g, '&').replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&quot;/g, '"').replace(/&apos;/g, "'");
         logdownloadelement.setAttribute("href", "data:text/plain;charset=utf-8," + encodeURIComponent(logtext));
@@ -354,15 +362,19 @@ if (!(localStorage.getItem("fontpreference") == null)) {
 
 window.onfocus = function () {
     focused = true;
-    icon.href = "kijetesantakalu_black.png";
-    if (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches) {
-        icon.href = "kijetesantakalu_white.png";
-    }
+    setkijetesantakalu();
 };
 
 window.onblur = function () {
     focused = false;
 };
+
+function setkijetesantakalu() {
+    icon.href = "kijetesantakalu_black.png";
+    if (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches) {
+        icon.href = "kijetesantakalu_white.png";
+    }
+}
 
 function sanitise(dirty) {
     return dirty.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&apos;');
@@ -378,3 +390,5 @@ function linkify(text) {
         }
     });
 }
+
+setkijetesantakalu();
