@@ -110,12 +110,15 @@ var options;
 var smform;
 var ncform;
 var ccform;
+var logform;
+var logtext;
+var logdownloadelement;
 var colour = "ffffff";
 var focused = true;
 var icon = document.getElementById("icon");
 
 function loadchatroom(chatName) {
-    cont.innerHTML = '<p id = "chat"><b>Please note that you will not be able to see messages sent before the tab was opened. It is recommended to keep this tab running in the background, if you do not wish to miss out.</b></p><form id = "sendmessageform"><input type = "text", id = "sendmessage", name = "sendmessage", placeholder = "Message here...", required, autocomplete = "off"><input type = "submit", id = "smbutton", name = "button", value = "Send Message", required></form><form id = "changenickform"><input type = "text", id = "changenick", name = "changenick", placeholder = "Set nickname...", required, autocomplete = "off"><input type = "submit", id = "cnbutton", name = "button", value = "Set Nickname", required></form><form id = "changecolourform"><input type = "text", id = "changecolour", name = "changecolour", placeholder = "Set colour (hex)...", required, autocomplete = "off"><input type = "submit", id = "ccbutton", name = "button", value = "Set Colour", required></form><p id = "nickdisplay">Current Nickname: <span style = "color: #' + colour + '"><b>' + nick + '</b></span></p><p id = "codedisplay"></p>';
+    cont.innerHTML = '<p id = "chat"><b>Please note that you will not be able to see messages sent before the tab was opened. It is recommended to keep this tab running in the background, if you do not wish to miss out.</b></p><form id = "sendmessageform"><input type = "text", id = "sendmessage", name = "sendmessage", placeholder = "Message here...", required, autocomplete = "off"><input type = "submit", id = "smbutton", name = "button", value = "Send Message", required></form><form id = "changenickform"><input type = "text", id = "changenick", name = "changenick", placeholder = "Set nickname...", required, autocomplete = "off"><input type = "submit", id = "cnbutton", name = "button", value = "Set Nickname", required></form><form id = "changecolourform"><input type = "text", id = "changecolour", name = "changecolour", placeholder = "Set colour (hex)...", required, autocomplete = "off"><input type = "submit", id = "ccbutton", name = "button", value = "Set Colour", required></form><p id = "nickdisplay">Current Nickname: <span style = "color: #' + colour + '"><b>' + nick + '</b></span></p><p id = "codedisplay"></p><form id = "logbuttonform"><input type = "submit", id = "logbutton", name = "button", value = "Download log", required></form>';
 
     nd = document.getElementById("nickdisplay");
     cd = document.getElementById("codedisplay");
@@ -153,6 +156,25 @@ function loadchatroom(chatName) {
         localStorage.setItem("colourpreference", colour);
         nd.innerHTML = 'Current Nickname: <span style = "color: #' + colour + '"><b>' + nick + '</b></span>';
         ccform.reset();
+    });
+
+    logform = document.getElementById("logbuttonform");
+    logform.addEventListener("submit", (e) => {
+        e.preventDefault();
+        e.stopImmediatePropagation();
+        logdownloadelement = document.createElement("a");
+        logtext = chat.innerHTML.replace("<b>Please note that you will not be able to see messages sent before the tab was opened. It is recommended to keep this tab running in the background, if you do not wish to miss out.</b>","").replace(/<br>/g,"\n");
+        while (!(logtext.indexOf("<") == -1 && logtext.indexOf(">") == -1)) {
+            logtext = logtext.replace(logtext.substring(logtext.indexOf("<"), logtext.indexOf(">") + 1), "");
+        }
+        logtext = logtext.slice(2);
+        logdownloadelement.setAttribute("href", "data:text/plain;charset=utf-8," + encodeURIComponent(logtext));
+        logdownloadelement.setAttribute("download", "log.txt");
+        logdownloadelement.style.display = "none";
+        document.body.appendChild(logdownloadelement);
+        logdownloadelement.click();
+        document.body.removeChild(logdownloadelement);
+        logform.reset();
     });
 
     cd.innerHTML = "Room code: <b>" + chatName + "</b>";
