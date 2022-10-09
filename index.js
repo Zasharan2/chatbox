@@ -109,11 +109,13 @@ var today;
 var options;
 var smform;
 var ncform;
+var ccform;
+var colour = "ffffff";
 var focused = true;
 var icon = document.getElementById("icon");
 
 function loadchatroom(chatName) {
-    cont.innerHTML = '<p id = "chat"><b>Please note that you will not be able to see messages sent before the tab was opened. It is recommended to keep this tab running in the background, if you do not wish to miss out.</b></p><form id = "sendmessageform"><input type = "text", id = "sendmessage", name = "sendmessage", placeholder = "Message here...", required, autocomplete = "off"><input type = "submit", id = "smbutton", name = "button", value = "Send Message", required></form><form id = "changenickform"><input type = "text", id = "changenick", name = "changenick", placeholder = "Set nickname...", required, autocomplete = "off"><input type = "submit", id = "cnbutton", name = "button", value = "Set Nickname", required></form><p id = "nickdisplay">Current Nickname: <b>' + nick + '</b></p><p id = "codedisplay"></p>';
+    cont.innerHTML = '<p id = "chat"><b>Please note that you will not be able to see messages sent before the tab was opened. It is recommended to keep this tab running in the background, if you do not wish to miss out.</b></p><form id = "sendmessageform"><input type = "text", id = "sendmessage", name = "sendmessage", placeholder = "Message here...", required, autocomplete = "off"><input type = "submit", id = "smbutton", name = "button", value = "Send Message", required></form><form id = "changenickform"><input type = "text", id = "changenick", name = "changenick", placeholder = "Set nickname...", required, autocomplete = "off"><input type = "submit", id = "cnbutton", name = "button", value = "Set Nickname", required></form><form id = "changecolourform"><input type = "text", id = "changecolour", name = "changecolour", placeholder = "Set colour (hex)...", required, autocomplete = "off"><input type = "submit", id = "ccbutton", name = "button", value = "Set Colour", required></form><p id = "nickdisplay">Current Nickname: <span style = "color: #' + colour + '"><b>' + nick + '</b></span></p><p id = "codedisplay"></p>';
 
     nd = document.getElementById("nickdisplay");
     cd = document.getElementById("codedisplay");
@@ -126,7 +128,7 @@ function loadchatroom(chatName) {
         smf = linkify(sanitise(String(document.forms["sendmessageform"]["sendmessage"].value)));
         today  = new Date();
         options = { weekday: undefined, year: 'numeric', month: 'numeric', day: 'numeric', hour: "numeric", minute: "numeric", second: "numeric" };
-        send = today.toLocaleDateString("en-US", options) + " <b>" + nick + ":</b> " + smf;
+        send = today.toLocaleDateString("en-US", options) + ' <span style = "color: #' + colour + '"><b>' + nick + ':</b></span> ' + smf;
         set(chatRef, {
             recentMessage: send
         });
@@ -139,8 +141,18 @@ function loadchatroom(chatName) {
         e.stopImmediatePropagation();
         nick = sanitise(String(document.forms["changenickform"]["changenick"].value));
         localStorage.setItem("nicknamepreference", nick);
-        nd.innerHTML = "Current Nickname: <b>" + nick + "</b>";
+        nd.innerHTML = 'Current Nickname: <span style = "color: #' + colour + '"><b>' + nick + '</b></span>';
         ncform.reset();
+    });
+
+    ccform = document.getElementById("changecolourform");
+    ccform.addEventListener("submit", (e) => {
+        e.preventDefault();
+        e.stopImmediatePropagation();
+        colour = sanitise(String(document.forms["changecolourform"]["changecolour"].value));
+        localStorage.setItem("colourpreference", colour);
+        nd.innerHTML = 'Current Nickname: <span style = "color: #' + colour + '"><b>' + nick + '</b></span>';
+        ccform.reset();
     });
 
     cd.innerHTML = "Room code: <b>" + chatName + "</b>";
@@ -150,6 +162,10 @@ function loadchatroom(chatName) {
 
 if (!(localStorage.getItem("nicknamepreference") == null)) {
     nick = localStorage.getItem("nicknamepreference");
+}
+
+if (!(localStorage.getItem("colourpreference") == null)) {
+    colour = localStorage.getItem("colourpreference");
 }
 
 function init(chatName) {
