@@ -384,7 +384,7 @@ function linkify(text) {
     var urlRegex =/(\b(https?|ftp|file):\/\/[-A-Z0-9+&@#\/%?=~_|!:,.;]*[-A-Z0-9+&@#\/%=~_|])/ig;
     return text.replace(urlRegex, function(url) {
         if (url.match(/\.(jpeg|jpg|svg|webp|tif|heic|gif|png)$/) == null) {
-            return '<a href ="' + url + '">' + url + '</a>';
+            return '<a style = "color: 0066cc;", href ="' + url + '">' + url + '</a>';
         } else {
             return '<img src="' + url + '">';
         }
