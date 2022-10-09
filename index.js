@@ -168,6 +168,7 @@ function loadchatroom(chatName) {
             logtext = logtext.replace(logtext.substring(logtext.indexOf("<"), logtext.indexOf(">") + 1), "");
         }
         logtext = logtext.slice(2);
+        logtext = logtext.replace(/&amp;/g, '&').replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&quot;/g, '"').replace(/&apos;/g, "'");
         logdownloadelement.setAttribute("href", "data:text/plain;charset=utf-8," + encodeURIComponent(logtext));
         logdownloadelement.setAttribute("download", "log.txt");
         logdownloadelement.style.display = "none";
@@ -364,7 +365,7 @@ window.onblur = function () {
 };
 
 function sanitise(dirty) {
-    return dirty.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt').replace(/"/g, '&quot;').replace(/'/g, '&apos;');
+    return dirty.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&apos;');
 }
 
 function linkify(text) {
