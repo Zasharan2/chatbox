@@ -106,6 +106,7 @@ var nick = "Anonymous User";
 var send;
 var chatRef;
 var today;
+var lastmessagesenttime = new Date();
 var options;
 var smform;
 var ncform;
@@ -120,84 +121,156 @@ var icon = document.getElementById("icon");
 var title = document.getElementById("title");
 
 function loadchatroom(chatName) {
+    // set chat contents
     cont.innerHTML = '<p id = "chat"><b>Please note that you will not be able to see messages sent before the tab was opened. It is recommended to keep this tab running in the background, if you do not wish to miss out.</b></p><form id = "sendmessageform"><input type = "text", id = "sendmessage", name = "sendmessage", placeholder = "Message here...", required, autocomplete = "off"><input type = "submit", id = "smbutton", name = "button", value = "Send Message", required></form><form id = "changenickform"><input type = "text", id = "changenick", name = "changenick", placeholder = "Set nickname...", required, autocomplete = "off"><input type = "submit", id = "cnbutton", name = "button", value = "Set Nickname", required></form><form id = "changecolourform"><input type = "text", id = "changecolour", name = "changecolour", placeholder = "Set colour (hex)...", required, autocomplete = "off"><input type = "submit", id = "ccbutton", name = "button", value = "Set Colour", required></form><p id = "nickdisplay">Current Nickname: <span style = "color: #' + colour + '"><b>' + nick + '</b></span></p><p id = "codedisplay"></p><form id = "logbuttonform"><input type = "submit", id = "logbutton", name = "button", value = "Download log", required></form>';
 
+    // set title to chat name
     title.innerHTML = chatName;
 
     nd = document.getElementById("nickdisplay");
     cd = document.getElementById("codedisplay");
     chat = document.getElementById("chat");
     
+    // send message handling
     smform = document.getElementById("sendmessageform");
     smform.addEventListener("submit", (e) => {
+        // prevents page from reloading
         e.preventDefault();
+
+        // prevents double submissions from one click
         e.stopImmediatePropagation();
+
+        // get value submitted, sanitise and linkify it
         smf = linkify(sanitise(String(document.forms["sendmessageform"]["sendmessage"].value)));
-        today  = new Date();
+
+        // get date to append to text
+        today = new Date();
         options = { weekday: undefined, year: 'numeric', month: 'numeric', day: 'numeric', hour: "numeric", minute: "numeric", second: "numeric" };
-        send = today.toLocaleDateString("en-US", options) + ' <span style = "color: #' + colour + '"><b>' + nick + ':</b></span> ' + smf;
-        set(chatRef, {
-            recentMessage: send
-        });
-        smform.reset();
+
+        // check the user hasn't sent anything within the second (if so they are likely spamming)
+        if (today.toLocaleDateString("en-US", options) != lastmessagesenttime.toLocaleDateString("en-US", options)) {
+            lastmessagesenttime = today;
+
+            // cap message length limit (unless it is a link or image)
+            if (!(smf.includes("<img") || smf.includes("<a"))) {
+                if (smf.length > 250) {
+                    smf = smf.substring(0, 250);
+                }
+            }
+
+            // format and send the message
+            send = today.toLocaleDateString("en-US", options) + ' <span style = "color: #' + colour + '"><b>' + nick + ':</b></span> ' + smf;
+            set(chatRef, {
+                recentMessage: send
+            });
+
+            // clear input field
+            smform.reset();
+        }
     });
 
+    // nickname form handling
     ncform = document.getElementById("changenickform");
     ncform.addEventListener("submit", (e) => {
+        // prevents page from reloading
         e.preventDefault();
+
+        // prevents double submissions from one click
         e.stopImmediatePropagation();
+
+        // get value submitted, sanitise it
         nick = sanitise(String(document.forms["changenickform"]["changenick"].value));
+
+        // set client variable
         localStorage.setItem("nicknamepreference", nick);
+
+        // display nickname
         nd.innerHTML = 'Current Nickname: <span style = "color: #' + colour + '"><b>' + nick + '</b></span>';
+
+        // clear input field
         ncform.reset();
     });
 
+    // colour change form handling
     ccform = document.getElementById("changecolourform");
     ccform.addEventListener("submit", (e) => {
+        // prevents page from reloading
         e.preventDefault();
+
+        // prevents double submissions from one click
         e.stopImmediatePropagation();
+
+        // get value submitted, sanitise it
         colour = sanitise(String(document.forms["changecolourform"]["changecolour"].value));
+
+        // set client variable
         localStorage.setItem("colourpreference", colour);
+
+        // display colour
         nd.innerHTML = 'Current Nickname: <span style = "color: #' + colour + '"><b>' + nick + '</b></span>';
+
+        // clear input field
         ccform.reset();
     });
 
+    // log button handling
     logform = document.getElementById("logbuttonform");
     logform.addEventListener("submit", (e) => {
+        // prevents page from reloading
         e.preventDefault();
+
+        // prevents double submissions from one click
         e.stopImmediatePropagation();
+
+        // create html element
         logdownloadelement = document.createElement("a");
+
+        // remove warning message and replace html element <br> with \n
         logtext = chat.innerHTML.replace("<b>Please note that you will not be able to see messages sent before the tab was opened. It is recommended to keep this tab running in the background, if you do not wish to miss out.</b>","").replace(/<br>/g,"\n");
+
+        // loop until there are no more html tags (checked by searching for < and >)
         while (!(logtext.indexOf("<") == -1 && logtext.indexOf(">") == -1)) {
-            console.log("loop moment");
-            console.log(logtext);
+            // locate image tags and replace them with the image source link
             toreplace = "";
             if ((logtext.indexOf('<img src="') != -1) && (logtext.indexOf('<img src="') == logtext.indexOf("<"))) {
-                toreplace = logtext.substring(logtext.indexOf('<img src="') + 10, logtext.indexOf('">'));
+                toreplace = logtext.substring(logtext.indexOf('<img src="') + 10, logtext.indexOf('"', logtext.indexOf('"') + 1));
             }
             logtext = logtext.replace(logtext.substring(logtext.indexOf("<"), logtext.indexOf(">") + 1), toreplace);
         }
-        console.log("hwere");
+        // remove first two \n characters
         logtext = logtext.slice(2);
+        // unsanitise text (so that they show up better in the logs)
         logtext = logtext.replace(/&amp;/g, '&').replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&quot;/g, '"').replace(/&apos;/g, "'");
+        // give the html element a source to the logtext
         logdownloadelement.setAttribute("href", "data:text/plain;charset=utf-8," + encodeURIComponent(logtext));
+        // make the html element a download
         logdownloadelement.setAttribute("download", "log.txt");
+        // set the html element to not display
         logdownloadelement.style.display = "none";
+        // add the element to the dom
         document.body.appendChild(logdownloadelement);
+        // click the element
         logdownloadelement.click();
+        // remove the element from the dom
         document.body.removeChild(logdownloadelement);
+
+        // reset the form? idr what this code does lmao
         logform.reset();
     });
 
+    // display room code at the bottom
     cd.innerHTML = "Room code: <b>" + chatName + "</b>";
 
+    // connect to firebase
     init(chatName);
 }
 
+// get client variable for preferred nickname
 if (!(localStorage.getItem("nicknamepreference") == null)) {
     nick = localStorage.getItem("nicknamepreference");
 }
 
+// get client variable for preferred colour
 if (!(localStorage.getItem("colourpreference") == null)) {
     colour = localStorage.getItem("colourpreference");
 }
@@ -211,13 +284,11 @@ function init(chatName) {
 
             // callback will occur whenever player ref changes
             onValue(chatRef, (snapshot) => {
-                for (var key in (snapshot.val() || {})) {
-                    chat.innerHTML += "<br></br>" + snapshot.val()[key];
-                    if (!focused) {
-                        icon.href = "kijetesantakalu_notif.png";
-                    }
-                    document.getElementById("sendmessage").scrollIntoView();
+                chat.innerHTML += "<br></br>" + snapshot.val()["recentMessage"];
+                if (!focused) {
+                    icon.href = "kijetesantakalu_notif.png";
                 }
+                document.getElementById("sendmessage").scrollIntoView();
                 // for (var key in (snapshot.val() || {})) {
                 //     gamePlayers[key].name = snapshot.val()[key].name;
                 //     gamePlayers[key].x = snapshot.val()[key].x;
@@ -255,6 +326,7 @@ function init(chatName) {
     });
 }
 
+// theme form handling
 var tcss = document.getElementById("themecss");
 var tsform = document.getElementById("themeselectform");
 var ts = document.getElementById("themeselect");
@@ -271,6 +343,7 @@ tsform.addEventListener("submit", (e) => {
     }
 });
 
+// get client variable for preferred theme
 if (!(localStorage.getItem("themepreference") == null)) {
     if (localStorage.getItem("themepreference") == "Light Mode") {
         tcss.href = "theme_light.css";
@@ -281,6 +354,7 @@ if (!(localStorage.getItem("themepreference") == null)) {
     }
 }
 
+// font form handling
 var fcss = document.getElementById("fontcss");
 var fsform = document.getElementById("fontselectform");
 var fs = document.getElementById("fontselect");
@@ -309,11 +383,6 @@ fsform.addEventListener("submit", (e) => {
             localStorage.setItem("fontpreference", "Comfortaa");
             break;
         }
-        case "Calibri": {
-            fcss.href = "font_clb.css";
-            localStorage.setItem("fontpreference", "Calibri");
-            break;
-        }
         case "Wire One": {
             fcss.href = "font_wo.css";
             localStorage.setItem("fontpreference", "Wire One");
@@ -325,6 +394,7 @@ fsform.addEventListener("submit", (e) => {
     }
 });
 
+// get client variable for preferred font
 if (!(localStorage.getItem("fontpreference") == null)) {
     switch(localStorage.getItem("fontpreference")) {
         case "Arial": {
@@ -347,14 +417,9 @@ if (!(localStorage.getItem("fontpreference") == null)) {
             fs.value = "3";
             break;
         }
-        case "Calibri": {
-            fcss.href = "font_clb.css";
-            fs.value = "4";
-            break;
-        }
         case "Wire One": {
             fcss.href = "font_wo.css";
-            fs.value = "5";
+            fs.value = "4";
             break;
         }
         default: {
@@ -373,6 +438,7 @@ window.onblur = function () {
 };
 
 function setkijetesantakalu() {
+    // set icon based on browser theme
     icon.href = "kijetesantakalu_black.png";
     if (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches) {
         icon.href = "kijetesantakalu_white.png";
@@ -383,13 +449,26 @@ function sanitise(dirty) {
     return dirty.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&apos;');
 }
 
+var img;
+var imgw;
+var imgh;
+
 function linkify(text) {
     var urlRegex =/(\b(https?|ftp|file):\/\/[-A-Z0-9+&@#\/%?=~_|!:,.;]*[-A-Z0-9+&@#\/%=~_|])/ig;
     return text.replace(urlRegex, function(url) {
         if (url.match(/\.(jpeg|jpg|svg|webp|tif|heic|gif|png)$/) == null) {
+            // sending link
             return '<a style = "color: #0066cc;", href ="' + url + '">' + url + '</a>';
         } else {
-            return '<img src="' + url + '">';
+            // sending image
+            img = new Image();
+            img.src = url;
+            // height cap (150)
+            if (img.height > 150) {
+                imgw *= 150 / img.height;
+                imgh = 150;
+            }
+            return '<img src="' + url + '", width = "' + imgw + 'px", height = "' + imgh + 'px">';
         }
     });
 }
