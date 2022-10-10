@@ -153,8 +153,8 @@ function loadchatroom(chatName) {
 
             // cap message length limit (unless it is a link or image)
             if (!(smf.includes("<img") || smf.includes("<a"))) {
-                if (smf.length > 250) {
-                    smf = smf.substring(0, 250);
+                if (smf.length > 400) {
+                    smf = smf.substring(0, 400);
                 }
             }
 
