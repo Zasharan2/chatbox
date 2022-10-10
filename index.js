@@ -465,10 +465,10 @@ function linkify(text) {
             img.src = url;
             imgw = img.width;
             imgh = img.height;
-            // height cap (150)
-            if (img.height > 150) {
-                imgw *= 150 / img.height;
-                imgh = 150;
+            // height cap (480)
+            if (img.height > 480) {
+                imgw = Math.round(imgw * 480 / img.height);
+                imgh = 480;
             }
             return '<img src="' + url + '", width = "' + imgw + 'px", height = "' + imgh + 'px">';
         }
