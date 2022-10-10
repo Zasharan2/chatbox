@@ -244,7 +244,7 @@ function loadchatroom(chatName) {
         // give the html element a source to the logtext
         logdownloadelement.setAttribute("href", "data:text/plain;charset=utf-8," + encodeURIComponent(logtext));
         // make the html element a download
-        logdownloadelement.setAttribute("download", "log.txt");
+        logdownloadelement.setAttribute("download", chatName + ".txt");
         // set the html element to not display
         logdownloadelement.style.display = "none";
         // add the element to the dom
@@ -463,6 +463,8 @@ function linkify(text) {
             // sending image
             img = new Image();
             img.src = url;
+            imgw = img.width;
+            imgh = img.height;
             // height cap (150)
             if (img.height > 150) {
                 imgw *= 150 / img.height;
