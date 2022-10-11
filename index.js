@@ -109,6 +109,7 @@ var today;
 var lastmessagesenttime = new Date();
 var options;
 var smform;
+var smerror;
 var ncform;
 var ccform;
 var logform;
@@ -122,13 +123,14 @@ var title = document.getElementById("title");
 
 function loadchatroom(chatName) {
     // set chat contents
-    cont.innerHTML = '<p id = "chat"><b>Please note that you will not be able to see messages sent before the tab was opened. It is recommended to keep this tab running in the background, if you do not wish to miss out.</b></p><form id = "sendmessageform"><input type = "text", id = "sendmessage", name = "sendmessage", placeholder = "Message here...", required, autocomplete = "off"><input type = "submit", id = "smbutton", name = "button", value = "Send Message", required></form><form id = "changenickform"><input type = "text", id = "changenick", name = "changenick", placeholder = "Set nickname...", required, autocomplete = "off"><input type = "submit", id = "cnbutton", name = "button", value = "Set Nickname", required></form><form id = "changecolourform"><input type = "text", id = "changecolour", name = "changecolour", placeholder = "Set colour (hex)...", required, autocomplete = "off"><input type = "submit", id = "ccbutton", name = "button", value = "Set Colour", required></form><p id = "nickdisplay">Current Nickname: <span style = "color: #' + colour + '"><b>' + nick + '</b></span></p><p id = "codedisplay"></p><form id = "logbuttonform"><input type = "submit", id = "logbutton", name = "button", value = "Download log", required></form>';
+    cont.innerHTML = '<p id = "chat"><b>Please note that you will not be able to see messages sent before the tab was opened. It is recommended to keep this tab running in the background, if you do not wish to miss out.</b></p><form id = "sendmessageform"><input type = "text", id = "sendmessage", name = "sendmessage", placeholder = "Message here...", required, autocomplete = "off"><input type = "submit", id = "smbutton", name = "button", value = "Send Message", required> <span style = "color: #ff0000", id = "smerror"></span></form><form id = "changenickform"><input type = "text", id = "changenick", name = "changenick", placeholder = "Set nickname...", required, autocomplete = "off"><input type = "submit", id = "cnbutton", name = "button", value = "Set Nickname", required></form><form id = "changecolourform"><input type = "text", id = "changecolour", name = "changecolour", placeholder = "Set colour (hex)...", required, autocomplete = "off"><input type = "submit", id = "ccbutton", name = "button", value = "Set Colour", required></form><p id = "nickdisplay">Current Nickname: <span style = "color: #' + colour + '"><b>' + nick + '</b></span></p><p id = "codedisplay"></p><form id = "logbuttonform"><input type = "submit", id = "logbutton", name = "button", value = "Download log", required></form>';
 
     // set title to chat name
     title.innerHTML = chatName;
 
     nd = document.getElementById("nickdisplay");
     cd = document.getElementById("codedisplay");
+    smerror = document.getElementById("smerror");
     chat = document.getElementById("chat");
     
     // send message handling
@@ -152,20 +154,27 @@ function loadchatroom(chatName) {
             lastmessagesenttime = today;
 
             // cap message length limit (unless it is a link or image)
-            if (!(smf.includes("<img") || smf.includes("<a"))) {
-                if (smf.length > 400) {
-                    smf = smf.substring(0, 400);
+            if ((smf.includes("<img") || smf.includes("<a")) || (smf.length < 401)) {
+                // format and send the message
+                send = today.toLocaleDateString("en-US", options) + ' <span style = "color: #' + colour + '"><b>' + nick + ':</b></span> ' + smf;
+                set(chatRef, {
+                    recentMessage: send
+                });
+
+                // clear error display
+                smerror.innerHTML = "";
+
+                // clear input field
+                smform.reset();
+            } else {
+                // display character limit error
+                smerror.innerHTML = "Error: The message you have tried to send is " + String(smf.length - 400) + " characters over the character limit (400)."
+                // unitary case
+                if (smf.length - 400 == 1) {
+                    smerror.innerHTML = "Error: The message you have tried to send is " + String(smf.length - 400) + " character over the character limit (400)."
                 }
             }
 
-            // format and send the message
-            send = today.toLocaleDateString("en-US", options) + ' <span style = "color: #' + colour + '"><b>' + nick + ':</b></span> ' + smf;
-            set(chatRef, {
-                recentMessage: send
-            });
-
-            // clear input field
-            smform.reset();
         }
     });
 
@@ -180,6 +189,10 @@ function loadchatroom(chatName) {
 
         // get value submitted, sanitise it
         nick = sanitise(String(document.forms["changenickform"]["changenick"].value));
+
+        if (nick.length > 40) {
+            nick = nick.substring(0, 40);
+        }
 
         // set client variable
         localStorage.setItem("nicknamepreference", nick);
