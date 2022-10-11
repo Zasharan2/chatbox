@@ -1,7 +1,7 @@
 // Import the functions you need from the SDKs you need
 import { initializeApp } from "https://www.gstatic.com/firebasejs/9.8.4/firebase-app.js";
 import { getAuth, signInAnonymously, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/9.8.4/firebase-auth.js";
-import { getDatabase, ref, set, onDisconnect, onValue, onChildAdded, onChildRemoved, get, child } from "https://www.gstatic.com/firebasejs/9.8.4/firebase-database.js";
+import { getDatabase, ref, set, onDisconnect, onValue, onChildAdded, onChildRemoved, get, child, update, remove } from "https://www.gstatic.com/firebasejs/9.8.4/firebase-database.js";
 
 // Your web app's Firebase configuration
 const firebaseConfig = {
@@ -47,14 +47,16 @@ jrbform.addEventListener("submit", (e) => {
 });
 
 var crform;
+var ownerpass = null;
 
 function loadcreateroom() {
-    cont.innerHTML = '<form id = "createroomform"><input type = "text", id = "roomnameinput", name = "roomnameinput", placeholder = "Room code", required, autocomplete = "off", size = "30px"/><input type = "submit", id = "cr", name = "button", value = "Create Room", required/></form>'
+    cont.innerHTML = '<form id = "createroomform"><input type = "text", id = "roomnameinput", name = "roomnameinput", placeholder = "Room code", required, autocomplete = "off", size = "30px"/><input type = "text", id = "roomnamepass", name = "roomnamepass", placeholder = "Owner password", required, autocomplete = "off", size = "30px"/><input type = "submit", id = "cr", name = "button", value = "Create Room", required/></form>'
 
     crform = document.getElementById("createroomform");
     crform.addEventListener("submit", (e) => {
         var joinCode = sanitise(String(document.forms["createroomform"]["roomnameinput"].value));
-        if ((joinCode.length > 0)) {
+        ownerpass = sanitise(String(document.forms["createroomform"]["roomnamepass"].value));
+        if ((joinCode.length > 0) && (ownerpass.length > 0)) {
             e.preventDefault();
             e.stopImmediatePropagation();
             get(child(ref(database), `chats/${joinCode}`)).then((snapshot) => {
@@ -62,7 +64,7 @@ function loadcreateroom() {
                     e.preventDefault();
                     e.stopImmediatePropagation();
 
-                    loadchatroom(joinCode);
+                    loadchatroom(joinCode, 1);
         
                     crform.reset();
                 }
@@ -75,22 +77,21 @@ function loadcreateroom() {
 var jrform;
 
 function loadjoinroom() {
-    cont.innerHTML = '<form id = "joinroomform"><input type = "text", id = "roomnameinput", name = "roomnameinput", placeholder = "Room code", required, autocomplete = "off", size = "30px"/><input type = "submit", id = "cr", name = "button", value = "Join Room", required/></form>'
+    cont.innerHTML = '<form id = "joinroomform"><input type = "text", id = "roomnameinput", name = "roomnameinput", placeholder = "Room code", required, autocomplete = "off", size = "30px"/><input type = "text", id = "roomnamepass", name = "roomnamepass", placeholder = "Owner password (optional)", required, autocomplete = "off", size = "30px"/><input type = "submit", id = "cr", name = "button", value = "Join Room", required/></form>'
 
     jrform = document.getElementById("joinroomform");
     jrform.addEventListener("submit", (e) => {
         var joinCode = sanitise(String(document.forms["joinroomform"]["roomnameinput"].value));
+        var potentialOwnerpassconsole = sanitise(String(document.forms["joinroomform"]["roomnamepass"].value));
         if ((joinCode.length > 0)) {
             e.preventDefault();
             e.stopImmediatePropagation();
             get(child(ref(database), `chats/${joinCode}`)).then((snapshot) => {
                 if (snapshot.exists()) {
-                    e.preventDefault();
-                    e.stopImmediatePropagation();
-
-                    loadchatroom(joinCode);
-        
-                    jrform.reset();
+                    if (potentialOwnerpassconsole == snapshot.val()["ownerPass"]) {
+                        ownerpass = potentialOwnerpassconsole;
+                    }
+                    loadchatroom(joinCode, 0);
                 }
             });
             jrform.reset();
@@ -105,6 +106,7 @@ var smf;
 var nick = "Anonymous User";
 var send;
 var chatRef;
+var chatValid;
 var today;
 var lastmessagesenttime = new Date();
 var options;
@@ -112,6 +114,8 @@ var smform;
 var smerror;
 var ncform;
 var ccform;
+var ccdform;
+var dform;
 var logform;
 var logtext;
 var logdownloadelement;
@@ -121,9 +125,15 @@ var focused = true;
 var icon = document.getElementById("icon");
 var title = document.getElementById("title");
 
-function loadchatroom(chatName) {
+function loadchatroom(chatName, createorjoin) {
+    chatValid = true;
+
     // set chat contents
-    cont.innerHTML = '<p id = "chat"><b>Please note that you will not be able to see messages sent before the tab was opened. It is recommended to keep this tab running in the background, if you do not wish to miss out.</b></p><form id = "sendmessageform"><input type = "text", id = "sendmessage", name = "sendmessage", placeholder = "Message here...", required, autocomplete = "off"><input type = "submit", id = "smbutton", name = "button", value = "Send Message", required> <span style = "color: #ff0000", id = "smerror"></span></form><form id = "changenickform"><input type = "text", id = "changenick", name = "changenick", placeholder = "Set nickname...", required, autocomplete = "off"><input type = "submit", id = "cnbutton", name = "button", value = "Set Nickname", required></form><form id = "changecolourform"><input type = "text", id = "changecolour", name = "changecolour", placeholder = "Set colour (hex)...", required, autocomplete = "off"><input type = "submit", id = "ccbutton", name = "button", value = "Set Colour", required></form><p id = "nickdisplay">Current Nickname: <span style = "color: #' + colour + '"><b>' + nick + '</b></span></p><p id = "codedisplay"></p><form id = "logbuttonform"><input type = "submit", id = "logbutton", name = "button", value = "Download log", required></form>';
+    if (ownerpass == null) {
+        cont.innerHTML = '<b>Please note that you will not be able to see messages sent before the tab was opened. It is therefore recommended to keep this tab running in the background.</b><p id = "chat"></p><form id = "sendmessageform"><input type = "text", id = "sendmessage", name = "sendmessage", placeholder = "Message here...", required, autocomplete = "off"><input type = "submit", id = "smbutton", name = "button", value = "Send Message", required> <span style = "color: #ff0000", id = "smerror"></span></form><form id = "changenickform"><input type = "text", id = "changenick", name = "changenick", placeholder = "Set nickname...", required, autocomplete = "off"><input type = "submit", id = "cnbutton", name = "button", value = "Set Nickname", required></form><form id = "changecolourform"><input type = "text", id = "changecolour", name = "changecolour", placeholder = "Set colour (hex)...", required, autocomplete = "off"><input type = "submit", id = "ccbutton", name = "button", value = "Set Colour", required></form><p id = "nickdisplay">Current Nickname: <span style = "color: #' + colour + '"><b>' + nick + '</b></span></p><p id = "codedisplay"></p><form id = "logbuttonform"><input type = "submit", id = "logbutton", name = "button", value = "Download log", required></form>';
+    } else {
+        cont.innerHTML = '<b>Please note that you will not be able to see messages sent before the tab was opened. It is therefore recommended to keep this tab running in the background.</b><p id = "chat"></p><form id = "sendmessageform"><input type = "text", id = "sendmessage", name = "sendmessage", placeholder = "Message here...", required, autocomplete = "off"><input type = "submit", id = "smbutton", name = "button", value = "Send Message", required> <span style = "color: #ff0000", id = "smerror"></span></form><form id = "changenickform"><input type = "text", id = "changenick", name = "changenick", placeholder = "Set nickname...", required, autocomplete = "off"><input type = "submit", id = "cnbutton", name = "button", value = "Set Nickname", required></form><form id = "changecolourform"><input type = "text", id = "changecolour", name = "changecolour", placeholder = "Set colour (hex)...", required, autocomplete = "off"><input type = "submit", id = "ccbutton", name = "button", value = "Set Colour", required></form><p id = "nickdisplay">Current Nickname: <span style = "color: #' + colour + '"><b>' + nick + '</b></span></p><p id = "codedisplay"></p><form id = "changecodeform"><input type = "text", id = "changecode", name = "changecode", placeholder = "Set new code", required, autocomplete = "off"><input type = "submit", id = "ccdbutton", name = "button", value = "Change code (members need new code)", required></form><br><form id = "logbuttonform"><input type = "submit", id = "logbutton", name = "button", value = "Download log", required></form><br><form id = "delbuttonform"><input type = "submit", id = "delbutton", name = "button", value = "Delete Chatroom", style = "color: #ff0000", required></form>';
+    }
 
     // set title to chat name
     title.innerHTML = chatName;
@@ -155,17 +165,22 @@ function loadchatroom(chatName) {
 
             // cap message length limit (unless it is a link or image)
             if ((smf.includes("<img") || smf.includes("<a")) || (smf.length < 401)) {
-                // format and send the message
-                send = today.toLocaleDateString("en-US", options) + ' <span style = "color: #' + colour + '"><b>' + nick + ':</b></span> ' + smf;
-                set(chatRef, {
-                    recentMessage: send
-                });
-
-                // clear error display
-                smerror.innerHTML = "";
-
-                // clear input field
-                smform.reset();
+                if (chatValid == true) {
+                    // format and send the message
+                    send = today.toLocaleDateString("en-US", options) + ' <span style = "color: #' + colour + '"><b>' + nick + ':</b></span> ' + smf;
+                    update(chatRef, {
+                        recentMessage: send
+                    });
+                    
+                    // clear error display
+                    smerror.innerHTML = "";
+                    
+                    // clear input field
+                    smform.reset();
+                } else {
+                    // display room not found error
+                    smerror.innerHTML = "Error: The room you are trying to talk in no longer exists. This could be due to a code change or full deletion of the room."
+                }
             } else {
                 // display character limit error
                 smerror.innerHTML = "Error: The message you have tried to send is " + String(smf.length - 400) + " characters over the character limit (400)."
@@ -226,6 +241,39 @@ function loadchatroom(chatName) {
         ccform.reset();
     });
 
+    if (ownerpass != null) {
+        // code change form handling
+        ccdform = document.getElementById("changecodeform");
+        ccdform.addEventListener("submit", (e) => {
+            // prevents page from reloading
+            e.preventDefault();
+
+            // prevents double submissions from one click
+            e.stopImmediatePropagation();
+
+            var newCode = sanitise(String(document.forms["changecodeform"]["changecode"].value));
+
+            remove(chatRef);
+            
+            loadchatroom(newCode, 1);
+
+            // clear input field
+            ccdform.reset();
+        });
+
+        // code change form handling
+        dform = document.getElementById("delbuttonform");
+        dform.addEventListener("submit", (e) => {
+            // prevents double submissions from one click
+            e.stopImmediatePropagation();
+
+            remove(chatRef);
+
+            // clear input field
+            dform.reset();
+        });
+    }
+
     // log button handling
     logform = document.getElementById("logbuttonform");
     logform.addEventListener("submit", (e) => {
@@ -238,8 +286,8 @@ function loadchatroom(chatName) {
         // create html element
         logdownloadelement = document.createElement("a");
 
-        // remove warning message and replace html element <br> with \n
-        logtext = chat.innerHTML.replace("<b>Please note that you will not be able to see messages sent before the tab was opened. It is recommended to keep this tab running in the background, if you do not wish to miss out.</b>","").replace(/<br>/g,"\n");
+        // replace html element <br> with \n
+        logtext = chat.innerHTML.replace(/<br>/g,"\n");
 
         // loop until there are no more html tags (checked by searching for < and >)
         while (!(logtext.indexOf("<") == -1 && logtext.indexOf(">") == -1)) {
@@ -275,7 +323,7 @@ function loadchatroom(chatName) {
     cd.innerHTML = "Room code: <b>" + chatName + "</b>";
 
     // connect to firebase
-    init(chatName);
+    init(chatName, createorjoin);
 }
 
 // get client variable for preferred nickname
@@ -288,20 +336,33 @@ if (!(localStorage.getItem("colourpreference") == null)) {
     colour = localStorage.getItem("colourpreference");
 }
 
-function init(chatName) {
-    
+function init(chatName, createorjoin) {
     onAuthStateChanged(auth, (user) => {
         if (user) {
 
             chatRef = ref(database, `chats/${chatName}`);
 
-            // callback will occur whenever player ref changes
+            if (createorjoin == 1) {
+                // create
+                set(chatRef, {
+                    recentMessage: "",
+                    ownerPass: ownerpass
+                });
+            }
+
+            // callback will occur whenever chat ref changes
             onValue(chatRef, (snapshot) => {
-                chat.innerHTML += "<br></br>" + snapshot.val()["recentMessage"];
-                if (!focused) {
-                    icon.href = "kijetesantakalu_notif.png";
+                if (snapshot.exists()) {
+                    if ("recentMessage" in (snapshot.val())) {
+                        chat.innerHTML += "<br></br>" + snapshot.val()["recentMessage"];
+                        if (!focused) {
+                            icon.href = "kijetesantakalu_notif.png";
+                        }
+                        document.getElementById("sendmessage").scrollIntoView();
+                    }
+                } else {
+                    chatValid = false;
                 }
-                document.getElementById("sendmessage").scrollIntoView();
                 // for (var key in (snapshot.val() || {})) {
                 //     gamePlayers[key].name = snapshot.val()[key].name;
                 //     gamePlayers[key].x = snapshot.val()[key].x;
@@ -321,11 +382,15 @@ function init(chatName) {
                 //     var p = new Player(addedPlayer.name, addedPlayer.x, addedPlayer.y, false);
                 //     gamePlayers[addedPlayer.id] = p;
                 // }
+                
             });
-        
-            onChildRemoved(chatRef, (snapshot) => {
+        /*
+            onChildRemoved(allRef, (snapshot) => {
+                if (snapshot.val() == chatName) {
+                    //chatValid = false;
+                }
                 // delete(gamePlayers[snapshot.val().id]);
-            })
+            })*/
         } else {
             // logged out
         }
