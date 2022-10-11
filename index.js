@@ -475,4 +475,22 @@ function linkify(text) {
     });
 }
 
+function checkImg(url) {
+    img = new Image();
+    img.src = url;
+    return new Promise((resolve) => {
+        img.onload = () => resolve(true);
+        img.onerror = () => resolve(false);
+    });
+}
+
+function checkUrl(supposed) {
+    try {
+        new URL(supposed);
+        return true;
+    } catch (err) {
+        return false;
+    }
+}
+
 setkijetesantakalu();
