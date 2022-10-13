@@ -197,10 +197,10 @@ function loadchatroom(chatName, createorjoin) {
             } else {
                 if (smfNew.length < 401) {
                     // display more than 3 image limit error
-                    smerror.innerHTML = "Error: The message you have tried to send contains " + String(smfNew.length - 3) + " more images than the image limit allows (3)."
+                    smerror.innerHTML = "Error: The message you have tried to send contains " + String(smfNew.length - 3) + " more images/links than the image/link limit allows (3)."
                     // unitary case
                     if (smfNew.length - 3 == 1) {
-                        smerror.innerHTML = "Error: The message you have tried to send contains " + String(smfNew.length - 3) + " more image than the image limit allows (3)."
+                        smerror.innerHTML = "Error: The message you have tried to send contains " + String(smfNew.length - 3) + " more image/link than the image/link limit allows (3)."
                     }
                 } else {
                     // display character limit error
