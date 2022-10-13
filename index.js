@@ -103,6 +103,8 @@ var nd;
 var cd;
 var chat;
 var smf;
+var smfMatch;
+var smfNew;
 var nick = "Anonymous User";
 var send;
 var chatRef;
@@ -163,8 +165,19 @@ function loadchatroom(chatName, createorjoin) {
         if (today.toLocaleDateString("en-US", options) != lastmessagesenttime.toLocaleDateString("en-US", options)) {
             lastmessagesenttime = today;
 
-            // cap message length limit (unless it is a link or image)
-            if ((smf.includes("<img") || smf.includes("<a")) || (smf.length < 401)) {
+            // check the length of message without counting length of image or link
+            if (smf.includes("<img") || smf.includes("<a")) {
+                // match anything inside <>
+                smfMatch = smf.match(/(<[^<>]+>)+/g);
+                smfNew = smf;
+                for (var i = 0; i < smfMatch.length; i++) {
+                    // replace each item inside <> with nothingness
+                    smfNew = smfNew.replace(smfMatch[i], "");
+                }
+            }
+
+            // cap message length limit
+            if (smfNew.length < 401 && smfMatch.length < 4) {
                 if (chatValid == true) {
                     // format and send the message
                     send = today.toLocaleDateString("en-US", options) + ' <span style = "color: #' + colour + '"><b>' + nick + ':</b></span> ' + smf;
@@ -182,11 +195,20 @@ function loadchatroom(chatName, createorjoin) {
                     smerror.innerHTML = "Error: The room you are trying to talk in no longer exists. This could be due to a code change or full deletion of the room."
                 }
             } else {
-                // display character limit error
-                smerror.innerHTML = "Error: The message you have tried to send is " + String(smf.length - 400) + " characters over the character limit (400)."
-                // unitary case
-                if (smf.length - 400 == 1) {
-                    smerror.innerHTML = "Error: The message you have tried to send is " + String(smf.length - 400) + " character over the character limit (400)."
+                if (smfNew.length < 401) {
+                    // display more than 3 image limit error
+                    smerror.innerHTML = "Error: The message you have tried to send contains " + String(smfNew.length - 3) + " more images than the image limit allows (3)."
+                    // unitary case
+                    if (smfNew.length - 3 == 1) {
+                        smerror.innerHTML = "Error: The message you have tried to send contains " + String(smfNew.length - 3) + " more image than the image limit allows (3)."
+                    }
+                } else {
+                    // display character limit error
+                    smerror.innerHTML = "Error: The message you have tried to send is " + String(smf.length - 400) + " characters over the character limit (400)."
+                    // unitary case
+                    if (smf.length - 400 == 1) {
+                        smerror.innerHTML = "Error: The message you have tried to send is " + String(smf.length - 400) + " character over the character limit (400)."
+                    }
                 }
             }
 
