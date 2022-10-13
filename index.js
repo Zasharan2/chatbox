@@ -118,6 +118,7 @@ var ncform;
 var ccform;
 var ccdform;
 var dform;
+var sopform;
 var logform;
 var logtext;
 var logdownloadelement;
@@ -126,6 +127,7 @@ var colour = "ffffff";
 var focused = true;
 var icon = document.getElementById("icon");
 var title = document.getElementById("title");
+var rm; // recent message
 
 function loadchatroom(chatName, createorjoin) {
     chatValid = true;
@@ -134,7 +136,7 @@ function loadchatroom(chatName, createorjoin) {
     if (ownerpass == null) {
         cont.innerHTML = '<b>Please note that you will not be able to see messages sent before the tab was opened. It is therefore recommended to keep this tab running in the background.</b><p id = "chat"></p><form id = "sendmessageform"><input type = "text", id = "sendmessage", name = "sendmessage", placeholder = "Message here...", required, autocomplete = "off"><input type = "submit", id = "smbutton", name = "button", value = "Send Message", required> <span style = "color: #ff0000", id = "smerror"></span></form><form id = "changenickform"><input type = "text", id = "changenick", name = "changenick", placeholder = "Set nickname...", required, autocomplete = "off"><input type = "submit", id = "cnbutton", name = "button", value = "Set Nickname", required></form><form id = "changecolourform"><input type = "text", id = "changecolour", name = "changecolour", placeholder = "Set colour (hex)...", required, autocomplete = "off"><input type = "submit", id = "ccbutton", name = "button", value = "Set Colour", required></form><p id = "nickdisplay">Current Nickname: <span style = "color: #' + colour + '"><b>' + nick + '</b></span></p><p id = "codedisplay"></p><form id = "logbuttonform"><input type = "submit", id = "logbutton", name = "button", value = "Download log", required></form>';
     } else {
-        cont.innerHTML = '<b>Please note that you will not be able to see messages sent before the tab was opened. It is therefore recommended to keep this tab running in the background.</b><p id = "chat"></p><form id = "sendmessageform"><input type = "text", id = "sendmessage", name = "sendmessage", placeholder = "Message here...", required, autocomplete = "off"><input type = "submit", id = "smbutton", name = "button", value = "Send Message", required> <span style = "color: #ff0000", id = "smerror"></span></form><form id = "changenickform"><input type = "text", id = "changenick", name = "changenick", placeholder = "Set nickname...", required, autocomplete = "off"><input type = "submit", id = "cnbutton", name = "button", value = "Set Nickname", required></form><form id = "changecolourform"><input type = "text", id = "changecolour", name = "changecolour", placeholder = "Set colour (hex)...", required, autocomplete = "off"><input type = "submit", id = "ccbutton", name = "button", value = "Set Colour", required></form><p id = "nickdisplay">Current Nickname: <span style = "color: #' + colour + '"><b>' + nick + '</b></span></p><p id = "codedisplay"></p><form id = "changecodeform"><input type = "text", id = "changecode", name = "changecode", placeholder = "Set new code", required, autocomplete = "off"><input type = "submit", id = "ccdbutton", name = "button", value = "Change code (members need new code)", required></form><br><form id = "logbuttonform"><input type = "submit", id = "logbutton", name = "button", value = "Download log", required></form><br><form id = "delbuttonform"><input type = "submit", id = "delbutton", name = "button", value = "Delete Chatroom", style = "color: #ff0000", required></form>';
+        cont.innerHTML = '<b>Please note that you will not be able to see messages sent before the tab was opened. It is therefore recommended to keep this tab running in the background.</b><p id = "chat"></p><form id = "sendmessageform"><input type = "text", id = "sendmessage", name = "sendmessage", placeholder = "Message here...", required, autocomplete = "off"><input type = "submit", id = "smbutton", name = "button", value = "Send Message", required> <span style = "color: #ff0000", id = "smerror"></span></form><form id = "changenickform"><input type = "text", id = "changenick", name = "changenick", placeholder = "Set nickname...", required, autocomplete = "off"><input type = "submit", id = "cnbutton", name = "button", value = "Set Nickname", required></form><form id = "changecolourform"><input type = "text", id = "changecolour", name = "changecolour", placeholder = "Set colour (hex)...", required, autocomplete = "off"><input type = "submit", id = "ccbutton", name = "button", value = "Set Colour", required></form><p id = "nickdisplay">Current Nickname: <span style = "color: #' + colour + '"><b>' + nick + '</b></span></p><p id = "codedisplay"></p><form id = "changecodeform"><input type = "text", id = "changecode", name = "changecode", placeholder = "Set new code", required, autocomplete = "off"><input type = "submit", id = "ccdbutton", name = "button", value = "Change code (members need new code)", required></form><form id = "setownerpassform"><input type = "text", id = "setownerpass", name = "setownerpass", placeholder = "Set new ownerpass", required, autocomplete = "off"><input type = "submit", id = "sopbutton", name = "button", value = "Set ownerpass", required></form><br><form id = "logbuttonform"><input type = "submit", id = "logbutton", name = "button", value = "Download log", required></form><br><form id = "delbuttonform"><input type = "submit", id = "delbutton", name = "button", value = "Delete Chatroom", style = "color: #ff0000", required></form>';
     }
 
     // set title to chat name
@@ -285,6 +287,25 @@ function loadchatroom(chatName, createorjoin) {
             ccdform.reset();
         });
 
+        // set ownerpass form handling
+        sopform = document.getElementById("setownerpassform");
+        sopform.addEventListener("submit", (e) => {
+            // prevents page from reloading
+            e.preventDefault();
+
+            // prevents double submissions from one click
+            e.stopImmediatePropagation();
+
+            ownerpass = sanitise(String(document.forms["setownerpassform"]["setownerpass"].value));
+
+            update(chatRef, {
+                ownerPass: ownerpass
+            });
+
+            // clear input field
+            sopform.reset();
+        });
+        
         // code change form handling
         dform = document.getElementById("delbuttonform");
         dform.addEventListener("submit", (e) => {
@@ -378,11 +399,16 @@ function init(chatName, createorjoin) {
             onValue(chatRef, (snapshot) => {
                 if (snapshot.exists()) {
                     if ("recentMessage" in (snapshot.val())) {
-                        chat.innerHTML += "<br></br>" + snapshot.val()["recentMessage"];
-                        if (!focused) {
-                            icon.href = "kijetesantakalu_notif.png";
+                        // check to make sure it is infact the recentMessage changing (and not the ownerPass for instance)
+                        if (!(rm == snapshot.val()["recentMessage"])) {
+                            chat.innerHTML += "<br></br>" + snapshot.val()["recentMessage"];
+                            if (!focused) {
+                                icon.href = "kijetesantakalu_notif.png";
+                            }
+                            document.getElementById("sendmessage").scrollIntoView();
+                            
+                            rm = snapshot.val()["recentMessage"];
                         }
-                        document.getElementById("sendmessage").scrollIntoView();
                     }
                 } else {
                     chatValid = false;
