@@ -50,7 +50,7 @@ var crform;
 var ownerpass = null;
 
 function loadcreateroom() {
-    cont.innerHTML = '<form id = "createroomform"><input type = "text", id = "roomnameinput", name = "roomnameinput", placeholder = "Room code", required, autocomplete = "off", size = "30px"/><input type = "text", id = "roomnamepass", name = "roomnamepass", placeholder = "Owner password", required, autocomplete = "off", size = "30px"/><input type = "submit", id = "cr", name = "button", value = "Create Room", required/></form>'
+    cont.innerHTML = '<form id = "createroomform"><input type = "text", id = "roomnameinput", name = "roomnameinput", placeholder = "Room code", required, autocomplete = "off", size = "30px"/><br><input type = "text", id = "roomnamepass", name = "roomnamepass", placeholder = "Owner password", required, autocomplete = "off", size = "30px"/><br><input type = "submit", id = "cr", name = "button", value = "Create Room", required/></form>'
 
     crform = document.getElementById("createroomform");
     crform.addEventListener("submit", (e) => {
@@ -77,7 +77,7 @@ function loadcreateroom() {
 var jrform;
 
 function loadjoinroom() {
-    cont.innerHTML = '<form id = "joinroomform"><input type = "text", id = "roomnameinput", name = "roomnameinput", placeholder = "Room code", required, autocomplete = "off", size = "30px"/><input type = "text", id = "roomnamepass", name = "roomnamepass", placeholder = "Owner password (optional)", required, autocomplete = "off", size = "30px"/><input type = "submit", id = "cr", name = "button", value = "Join Room", required/></form>'
+    cont.innerHTML = '<form id = "joinroomform"><input type = "text", id = "roomnameinput", name = "roomnameinput", placeholder = "Room code", required, autocomplete = "off", size = "30px"/><br><input type = "text", id = "roomnamepass", name = "roomnamepass", placeholder = "Owner password (optional)", required, autocomplete = "off", size = "30px"/><br><input type = "submit", id = "cr", name = "button", value = "Join Room", required/></form>'
 
     jrform = document.getElementById("joinroomform");
     jrform.addEventListener("submit", (e) => {
