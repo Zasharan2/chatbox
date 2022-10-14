@@ -157,7 +157,7 @@ function loadchatroom(chatName, createorjoin) {
         e.stopImmediatePropagation();
 
         // get value submitted, sanitise and linkify it
-        smf = linkify(sanitise(String(document.forms["sendmessageform"]["sendmessage"].value)));
+        smf = stylify(linkify(sanitise(String(document.forms["sendmessageform"]["sendmessage"].value))));
 
         // get date to append to text
         today = new Date();
@@ -170,14 +170,25 @@ function loadchatroom(chatName, createorjoin) {
             // check the length of message without counting length of image or link
             smfNew = smf;
             smfMatch = [];
-            if (smf.includes("<img") || smf.includes("<a")) {
+            if (smf.includes("<")) {
                 // match anything inside <>
                 smfMatch = smf.match(/(<[^<>]+>)+/g);
                 for (var i = 0; i < smfMatch.length; i++) {
                     // replace each item inside <> with nothingness
                     smfNew = smfNew.replace(smfMatch[i], "");
                 }
+
+                // reset smfMatch to exclusively match img and a tags (for later use with link and image limits)
+                if (smf.includes("<img") || smf.includes("<a")) {
+                    // if there are such tags, identify those ones only
+                    smfMatch = smf.match(/(<img [^<>]*>)|(<a [^<>]*>)+/g);
+                } else {
+                    // if there are no such tags, revert back to empty list once more
+                    smfMatch = [];
+                }
             }
+            console.log(smf);
+            console.log(smfMatch); // why don't i test a **bold** message, an *italic* message, and a message with ***both***?
 
             // cap message length limit
             if (smfNew.length < 401 && smfMatch.length < 4) {
@@ -581,8 +592,8 @@ var img;
 var imgw;
 var imgh;
 
+var urlRegex =/(\b(https?|ftp|file):\/\/[-A-Z0-9+&@#\/%?=~_|!:,.;]*[-A-Z0-9+&@#\/%=~_|])/ig;
 function linkify(text) {
-    var urlRegex =/(\b(https?|ftp|file):\/\/[-A-Z0-9+&@#\/%?=~_|!:,.;]*[-A-Z0-9+&@#\/%=~_|])/ig;
     return text.replace(urlRegex, function(url) {
         if (url.match(/\.(jpeg|jpg|svg|webp|tif|heic|gif|png)$/) == null) {
             // sending link
@@ -619,6 +630,29 @@ function checkUrl(supposed) {
     } catch (err) {
         return false;
     }
+}
+
+var cancelledAsterisk = /\\\*/g;
+var cancelledUnderscore = /\\\_/g;
+var cancelledTilde = /\\~/g;
+var cancelledBackslash = /\\\\/g;
+var boldRegex = /(\*\*[^\*]+\*\*)+/g;
+var italicRegex1 = /(\*[^\*]+\*)+/g;
+var underlineRegex = /(\_\_[^\_]+\_\_)+/g;
+var italicRegex2 = /(\_[^\_]+\_)+/g;
+var strikethroughRegex = /(~~[^~]+~~)+/g;
+function stylify(text) {
+    return text.replace(cancelledAsterisk, "&#42;").replace(cancelledUnderscore, "&#95;").replace(cancelledTilde, "&#126;").replace(cancelledBackslash, "&#92;").replace(boldRegex, function(matched) {
+        return "<b>" + matched.substring(2, matched.length - 2) + "</b>";
+    }).replace(italicRegex1, function (matched) {
+        return "<i>" + matched.substring(1, matched.length - 1) + "</i>";
+    }).replace(underlineRegex, function (matched) {
+        return "<u>" + matched.substring(2, matched.length - 2) + "</u>";
+    }).replace(italicRegex2, function (matched) {
+        return "<i>" + matched.substring(1, matched.length - 1) + "</i>";
+    }).replace(strikethroughRegex, function (matched) {
+        return "<del>" + matched.substring(2, matched.length - 2) + "</del>";
+    });
 }
 
 setkijetesantakalu();
