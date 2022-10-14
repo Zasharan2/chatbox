@@ -527,6 +527,26 @@ fsform.addEventListener("submit", (e) => {
             localStorage.setItem("fontpreference", "Wire One");
             break;
         }
+        case "Lobster": {
+            fcss.href = "font_lb.css";
+            localStorage.setItem("fontpreference", "Lobster");
+            break;
+        }
+        case "Courier New": {
+            fcss.href = "font_cn.css";
+            localStorage.setItem("fontpreference", "Courier New");
+            break;
+        }
+        case "Dosis": {
+            fcss.href = "font_dss.css";
+            localStorage.setItem("fontpreference", "Dosis");
+            break;
+        }
+        case "Bad Script": {
+            fcss.href = "font_bs.css";
+            localStorage.setItem("fontpreference", "Bad Script");
+            break;
+        }
         default: {
             break;
         }
@@ -560,6 +580,25 @@ if (!(localStorage.getItem("fontpreference") == null)) {
             fcss.href = "font_wo.css";
             fs.value = "4";
             break;
+        }
+        case "Lobster": {
+            fcss.href = "font_lb.css";
+            fs.value = "5";
+            break;
+        }
+        case "Courier New": {
+            fcss.href = "font_cn.css";
+            fs.value = "6";
+            break;
+        }
+        case "Dosis": {
+            fcss.href = "font_dss.css";
+            fs.value = "7";
+            break;
+        }
+        case "Bad Script": {
+            fcss.href = "font_bs.css";
+            fs.value = "8";
         }
         default: {
             break;
