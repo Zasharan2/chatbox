@@ -1,6 +1,6 @@
 // Import the functions you need from the SDKs you need
 import { initializeApp } from "https://www.gstatic.com/firebasejs/9.8.4/firebase-app.js";
-import { getAuth, signInAnonymously, onAuthStateChanged, GoogleAuthProvider, signInWithRedirect, getRedirectResult, signOut } from "https://www.gstatic.com/firebasejs/9.8.4/firebase-auth.js";
+import { getAuth, signInAnonymously, onAuthStateChanged, GoogleAuthProvider, signInWithRedirect, getRedirectResult, signOut, setPersistence, browserLocalPersistence } from "https://www.gstatic.com/firebasejs/9.8.4/firebase-auth.js";
 import { getDatabase, ref, set, onDisconnect, onValue, onChildAdded, onChildRemoved, get, child, update, remove } from "https://www.gstatic.com/firebasejs/9.8.4/firebase-database.js";
 
 // Your web app's Firebase configuration
@@ -19,11 +19,43 @@ const app = initializeApp(firebaseConfig);
 
 const provider = new GoogleAuthProvider();
 const auth = getAuth();
+setPersistence(auth, browserLocalPersistence).catch((error) => {
+    const errorCode = error.code;
+    const errorMessage = error.message;
+});
 
-//const auth = getAuth(app);
+init();
 
 // Initialize Realtime Database and get a reference to the service
 const database = getDatabase(app);
+
+// get login state
+var loggedIn = localStorage.getItem("kijeLoggedIn");
+
+// display correct text on login/signout button
+var lsobutton = document.getElementById("lsobutton");
+if (loggedIn == "true") {
+    lsobutton.value = "Sign Out";
+} else {
+    lsobutton.value = "Log In";
+}
+
+var lsoform = document.getElementById("loginsignoutform");
+lsoform.addEventListener("submit", (e) => {
+    e.preventDefault();
+    e.stopImmediatePropagation();
+
+    if (loggedIn == "true") {
+        localStorage.setItem("kijeLoggedIn", "false");
+        loggedIn = "false";
+        lsobutton.value = "Log In";
+        signout();
+    } else {
+        signInWithRedirect(auth, provider);
+    }
+
+    lsoform.reset();
+})
 
 var cont = document.getElementById("pagecontainer");
 
@@ -52,7 +84,7 @@ var crform;
 var ownerpass = null;
 
 function loadcreateroom() {
-    cont.innerHTML = '<form id = "createroomform"><input type = "text", id = "roomnameinput", name = "roomnameinput", placeholder = "Room code", required, autocomplete = "off", size = "30px"/><br><input type = "text", id = "roomnamepass", name = "roomnamepass", placeholder = "Owner password", required, autocomplete = "off", size = "30px"/><br><input type = "submit", id = "cr", name = "button", value = "Create Room", required/></form>'
+    cont.innerHTML = '<form id = "createroomform"><input type = "text", id = "roomnameinput", name = "roomnameinput", placeholder = "Room code", required, autocomplete = "off", size = "30px"/><br><input type = "text", id = "roomnamepass", name = "roomnamepass", placeholder = "Owner password", required, autocomplete = "off", size = "30px"/><br><input type = "submit", id = "cr", name = "button", value = "Create Room", required/></form><p style = "color: #ff0000", id = "createroomerror"></p>'
 
     crform = document.getElementById("createroomform");
     crform.addEventListener("submit", (e) => {
@@ -67,11 +99,18 @@ function loadcreateroom() {
                     e.stopImmediatePropagation();
 
                     // connect to firebase
+                    /*
                     localStorage.setItem("kijeredirected", "true");
                     localStorage.setItem("kijejc", joinCode);
                     localStorage.setItem("kijecoj", "1");
                     localStorage.setItem("kijeop", ownerpass);
-                    signInWithRedirect(auth, provider);
+                    signInWithRedirect(auth, provider);*/
+                    if (loggedIn == "true") {
+                        initChat(joinCode, 1);
+                        loadchatroom(joinCode, 1);
+                    } else {
+                        document.getElementById("createroomerror").innerHTML = "You are not logged in!";
+                    }
         
                     crform.reset();
                 }
@@ -84,7 +123,7 @@ function loadcreateroom() {
 var jrform;
 
 function loadjoinroom() {
-    cont.innerHTML = '<form id = "joinroomform"><input type = "text", id = "roomnameinput", name = "roomnameinput", placeholder = "Room code", required, autocomplete = "off", size = "30px"/><br><input type = "text", id = "roomnamepass", name = "roomnamepass", placeholder = "Owner password (optional)", required, autocomplete = "off", size = "30px"/><br><input type = "submit", id = "cr", name = "button", value = "Join Room", required/></form>'
+    cont.innerHTML = '<form id = "joinroomform"><input type = "text", id = "roomnameinput", name = "roomnameinput", placeholder = "Room code", required, autocomplete = "off", size = "30px"/><br><input type = "text", id = "roomnamepass", name = "roomnamepass", placeholder = "Owner password (optional)", required, autocomplete = "off", size = "30px"/><br><input type = "submit", id = "cr", name = "button", value = "Join Room", required/></form><p style = "color: #ff0000", id = "joinroomerror"></p>'
 
     jrform = document.getElementById("joinroomform");
     jrform.addEventListener("submit", (e) => {
@@ -95,8 +134,9 @@ function loadjoinroom() {
             e.stopImmediatePropagation();
             get(child(ref(database), `chats/${joinCode}`)).then((snapshot) => {
                 if (snapshot.exists()) {
-                    if (potentialOwnerpassconsole == snapshot.val()["ownerPass"]) {
-                        ownerpass = potentialOwnerpassconsole;
+                    /*
+                    if (potentialOwnerpassconsole == snapshot.val()["ownerPass"]) {*/
+                        ownerpass = potentialOwnerpassconsole;/*
                         localStorage.setItem("kijeop", ownerpass);
                     } else {
                         localStorage.setItem("kijeop", "");
@@ -105,7 +145,13 @@ function loadjoinroom() {
                     localStorage.setItem("kijeredirected", "true");
                     localStorage.setItem("kijejc", joinCode);
                     localStorage.setItem("kijecoj", "0");
-                    signInWithRedirect(auth, provider);
+                    signInWithRedirect(auth, provider);*/
+                    if (loggedIn == "true") {
+                        initChat(joinCode, 0);
+                        loadchatroom(joinCode, 0);
+                    } else {
+                        document.getElementById("joinroomerror").innerHTML = "You are not logged in!";
+                    }
                 }
             });
             jrform.reset();
@@ -153,16 +199,16 @@ if (!(localStorage.getItem("nicknamepreference") == null)) {
 if (!(localStorage.getItem("colourpreference") == null)) {
     colour = localStorage.getItem("colourpreference");
 }
-
+/*
 if (localStorage.getItem("kijeredirected") == "true") {
     localStorage.setItem("kijeredirected", "false");
     ownerpass = localStorage.getItem("kijeop");
     localStorage.setItem("kijeop", "");
-    init(localStorage.getItem("kijejc"), Number(localStorage.getItem("kijecoj")));
+    initChat(localStorage.getItem("kijejc"), Number(localStorage.getItem("kijecoj")));
     loadchatroom(localStorage.getItem("kijejc"), Number(localStorage.getItem("kijecoj")));
     localStorage.setItem("kijejc", "");
     localStorage.setItem("kijecoj", "");
-}
+}*/
 
 function loadchatroom(chatName, createorjoin) {
     chatValid = true;
@@ -411,11 +457,27 @@ function loadchatroom(chatName, createorjoin) {
     cd.innerHTML = "Room code: <b>" + chatName + "</b>";
 }
 
-function init(chatName, createorjoin) {
+function init() {
+    onAuthStateChanged(auth, (user) => {
+        if (user) {
+            localStorage.setItem("kijeLoggedIn", "true");
+            loggedIn = "true";
+            lsobutton.value = "Sign Out";
+        } else {
+            // logged out
+        }
+    })
+}
+
+function initChat(chatName, createorjoin) {
 //    signout();
 
     onAuthStateChanged(auth, (user) => {
         if (user) {
+            localStorage.setItem("kijeLoggedIn", "true");
+            loggedIn = "true";
+            lsobutton.value = "Sign Out";
+
             userEmail = user.email;
 
             chatRef = ref(database, `chats/${chatName}`);
