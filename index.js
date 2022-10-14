@@ -1,6 +1,6 @@
 // Import the functions you need from the SDKs you need
 import { initializeApp } from "https://www.gstatic.com/firebasejs/9.8.4/firebase-app.js";
-import { getAuth, signInAnonymously, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/9.8.4/firebase-auth.js";
+import { getAuth, signInAnonymously, onAuthStateChanged, GoogleAuthProvider, signInWithRedirect, getRedirectResult, signOut } from "https://www.gstatic.com/firebasejs/9.8.4/firebase-auth.js";
 import { getDatabase, ref, set, onDisconnect, onValue, onChildAdded, onChildRemoved, get, child, update, remove } from "https://www.gstatic.com/firebasejs/9.8.4/firebase-database.js";
 
 // Your web app's Firebase configuration
@@ -17,8 +17,10 @@ const firebaseConfig = {
 // Initialize Firebase
 const app = initializeApp(firebaseConfig);
 
-// Initialize Firebase Authentication and get a reference to the service
-const auth = getAuth(app);
+const provider = new GoogleAuthProvider();
+const auth = getAuth();
+
+//const auth = getAuth(app);
 
 // Initialize Realtime Database and get a reference to the service
 const database = getDatabase(app);
@@ -64,7 +66,12 @@ function loadcreateroom() {
                     e.preventDefault();
                     e.stopImmediatePropagation();
 
-                    loadchatroom(joinCode, 1);
+                    // connect to firebase
+                    localStorage.setItem("kijeredirected", "true");
+                    localStorage.setItem("kijejc", joinCode);
+                    localStorage.setItem("kijecoj", "1");
+                    localStorage.setItem("kijeop", ownerpass);
+                    signInWithRedirect(auth, provider);
         
                     crform.reset();
                 }
@@ -90,8 +97,15 @@ function loadjoinroom() {
                 if (snapshot.exists()) {
                     if (potentialOwnerpassconsole == snapshot.val()["ownerPass"]) {
                         ownerpass = potentialOwnerpassconsole;
+                        localStorage.setItem("kijeop", ownerpass);
+                    } else {
+                        localStorage.setItem("kijeop", "");
                     }
-                    loadchatroom(joinCode, 0);
+                    // connect to firebase
+                    localStorage.setItem("kijeredirected", "true");
+                    localStorage.setItem("kijejc", joinCode);
+                    localStorage.setItem("kijecoj", "0");
+                    signInWithRedirect(auth, provider);
                 }
             });
             jrform.reset();
@@ -128,12 +142,33 @@ var focused = true;
 var icon = document.getElementById("icon");
 var title = document.getElementById("title");
 var rm; // recent message
+var userEmail;
+
+// get client variable for preferred nickname
+if (!(localStorage.getItem("nicknamepreference") == null)) {
+    nick = localStorage.getItem("nicknamepreference");
+}
+
+// get client variable for preferred colour
+if (!(localStorage.getItem("colourpreference") == null)) {
+    colour = localStorage.getItem("colourpreference");
+}
+
+if (localStorage.getItem("kijeredirected") == "true") {
+    localStorage.setItem("kijeredirected", "false");
+    ownerpass = localStorage.getItem("kijeop");
+    localStorage.setItem("kijeop", "");
+    init(localStorage.getItem("kijejc"), Number(localStorage.getItem("kijecoj")));
+    loadchatroom(localStorage.getItem("kijejc"), Number(localStorage.getItem("kijecoj")));
+    localStorage.setItem("kijejc", "");
+    localStorage.setItem("kijecoj", "");
+}
 
 function loadchatroom(chatName, createorjoin) {
     chatValid = true;
 
     // set chat contents
-    if (ownerpass == null) {
+    if (ownerpass == null || !(ownerpass.length > 0)) {
         cont.innerHTML = '<b>Please note that you will not be able to see messages sent before the tab was opened. It is therefore recommended to keep this tab running in the background.</b><p id = "chat"></p><form id = "sendmessageform"><input type = "text", id = "sendmessage", name = "sendmessage", placeholder = "Message here...", required, autocomplete = "off"><input type = "submit", id = "smbutton", name = "button", value = "Send Message", required> <span style = "color: #ff0000", id = "smerror"></span></form><form id = "changenickform"><input type = "text", id = "changenick", name = "changenick", placeholder = "Set nickname...", required, autocomplete = "off"><input type = "submit", id = "cnbutton", name = "button", value = "Set Nickname", required></form><form id = "changecolourform"><input type = "text", id = "changecolour", name = "changecolour", placeholder = "Set colour (hex)...", required, autocomplete = "off"><input type = "submit", id = "ccbutton", name = "button", value = "Set Colour", required></form><p id = "nickdisplay">Current Nickname: <span style = "color: #' + colour + '"><b>' + nick + '</b></span></p><p id = "codedisplay"></p><form id = "logbuttonform"><input type = "submit", id = "logbutton", name = "button", value = "Download log", required></form>';
     } else {
         cont.innerHTML = '<b>Please note that you will not be able to see messages sent before the tab was opened. It is therefore recommended to keep this tab running in the background.</b><p id = "chat"></p><form id = "sendmessageform"><input type = "text", id = "sendmessage", name = "sendmessage", placeholder = "Message here...", required, autocomplete = "off"><input type = "submit", id = "smbutton", name = "button", value = "Send Message", required> <span style = "color: #ff0000", id = "smerror"></span></form><form id = "changenickform"><input type = "text", id = "changenick", name = "changenick", placeholder = "Set nickname...", required, autocomplete = "off"><input type = "submit", id = "cnbutton", name = "button", value = "Set Nickname", required></form><form id = "changecolourform"><input type = "text", id = "changecolour", name = "changecolour", placeholder = "Set colour (hex)...", required, autocomplete = "off"><input type = "submit", id = "ccbutton", name = "button", value = "Set Colour", required></form><p id = "nickdisplay">Current Nickname: <span style = "color: #' + colour + '"><b>' + nick + '</b></span></p><p id = "codedisplay"></p><form id = "changecodeform"><input type = "text", id = "changecode", name = "changecode", placeholder = "Set new code", required, autocomplete = "off"><input type = "submit", id = "ccdbutton", name = "button", value = "Change code (members need new code)", required></form><form id = "setownerpassform"><input type = "text", id = "setownerpass", name = "setownerpass", placeholder = "Set new ownerpass", required, autocomplete = "off"><input type = "submit", id = "sopbutton", name = "button", value = "Set ownerpass", required></form><br><form id = "logbuttonform"><input type = "submit", id = "logbutton", name = "button", value = "Download log", required></form><br><form id = "delbuttonform"><input type = "submit", id = "delbutton", name = "button", value = "Delete Chatroom", style = "color: #ff0000", required></form>';
@@ -187,14 +222,12 @@ function loadchatroom(chatName, createorjoin) {
                     smfMatch = [];
                 }
             }
-            console.log(smf);
-            console.log(smfMatch); // why don't i test a **bold** message, an *italic* message, and a message with ***both***?
 
             // cap message length limit
             if (smfNew.length < 401 && smfMatch.length < 4) {
                 if (chatValid == true) {
                     // format and send the message
-                    send = today.toLocaleDateString("en-US", options) + ' <span style = "color: #' + colour + '"><b>' + nick + ':</b></span> ' + smf;
+                    send = today.toLocaleDateString("en-US", options) + ' <span class = "userhover", style = "color: #' + colour + '"><b>' + nick + ':</b></span> ' + smf + '<div class = "emailhover">' + userEmail + '</div>';
                     update(chatRef, {
                         recentMessage: send
                     });
@@ -223,7 +256,6 @@ function loadchatroom(chatName, createorjoin) {
                     if (smfMatch.length - 3 == 1) {
                         smerror.innerHTML = "Error: The message you have tried to send contains " + String(smfMatch.length - 3) + " more image/link than the image/link limit allows (3)."
                     }
-                    console.log(smfMatch.length);
                 }
             }
 
@@ -278,7 +310,7 @@ function loadchatroom(chatName, createorjoin) {
         ccform.reset();
     });
 
-    if (ownerpass != null) {
+    if (!(ownerpass == null || !(ownerpass.length > 0))) {
         // code change form handling
         ccdform = document.getElementById("changecodeform");
         ccdform.addEventListener("submit", (e) => {
@@ -377,24 +409,14 @@ function loadchatroom(chatName, createorjoin) {
 
     // display room code at the bottom
     cd.innerHTML = "Room code: <b>" + chatName + "</b>";
-
-    // connect to firebase
-    init(chatName, createorjoin);
-}
-
-// get client variable for preferred nickname
-if (!(localStorage.getItem("nicknamepreference") == null)) {
-    nick = localStorage.getItem("nicknamepreference");
-}
-
-// get client variable for preferred colour
-if (!(localStorage.getItem("colourpreference") == null)) {
-    colour = localStorage.getItem("colourpreference");
 }
 
 function init(chatName, createorjoin) {
+//    signout();
+
     onAuthStateChanged(auth, (user) => {
         if (user) {
+            userEmail = user.email;
 
             chatRef = ref(database, `chats/${chatName}`);
 
@@ -412,7 +434,7 @@ function init(chatName, createorjoin) {
                     if ("recentMessage" in (snapshot.val())) {
                         // check to make sure it is infact the recentMessage changing (and not the ownerPass for instance)
                         if (!(rm == snapshot.val()["recentMessage"])) {
-                            chat.innerHTML += "<br></br>" + snapshot.val()["recentMessage"];
+                            chat.innerHTML += "<br><br>" + snapshot.val()["recentMessage"];
                             if (!focused) {
                                 icon.href = "kijetesantakalu_notif.png";
                             }
@@ -456,12 +478,38 @@ function init(chatName, createorjoin) {
             // logged out
         }
     });
+/*
+    getRedirectResult(auth).then((result) => {
+        // This gives you a Google Access Token. You can use it to access Google APIs.
+        const credential = GoogleAuthProvider.credentialFromResult(result);
+        const token = credential.accessToken;
 
-    signInAnonymously(auth).catch((error) => {
+        // The signed-in user info.
+        const user = result.user;
+    }).catch((error) => {
+        // Handle Errors here.
+        const errorCode = error.code;
+        const errorMessage = error.message;
+        // The email of the user's account used.
+        //const email = error.customData.email;
+        // The AuthCredential type that was used.
+        const credential = GoogleAuthProvider.credentialFromError(error);
+        // ...
+    })*/
+
+/*    signInAnonymously(auth).catch((error) => {
         const errorCode = error.code;
         const errorMessage = error.message;
         
         console.log(errorCode, errorMessage);
+    });*/
+}
+
+function signout() {
+    signOut(auth).then(() => {
+        // Sign-out successful.
+    }).catch((error) => {
+        // An error happened.
     });
 }
 

@@ -1,3 +1,11 @@
 html {
     scroll-behavior: smooth;
 }
+
+.emailhover {
+    display: none;
+}
+
+.userhover:hover + .emailhover {
+    display: block;
+}
