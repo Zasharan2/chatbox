@@ -273,7 +273,7 @@ function loadchatroom(chatName, createorjoin) {
             if (smfNew.length < 401 && smfMatch.length < 4) {
                 if (chatValid == true) {
                     // format and send the message
-                    send = today.toLocaleDateString("en-US", options) + ' <span class = "userhover", style = "color: #' + colour + '"><b>' + nick + ':</b></span> ' + smf + '<div class = "emailhover userhover">' + "\u200e ".repeat(today.toLocaleDateString("en-US", options).length + 1) +  userEmail + '</div>';
+                    send = today.toLocaleDateString("en-US", options) + ' <span class = "userhover", style = "color: #' + colour + '"><b>' + nick + ':</b></span> ' + smf + '<div class = "emailhover userhover">' + userEmail + '</div>';
                     update(chatRef, {
                         recentMessage: send
                     });
