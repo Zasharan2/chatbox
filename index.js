@@ -745,7 +745,9 @@ var urlRegex =/(\b(https?|ftp|file):\/\/[-A-Z0-9+&@#\/%?=~_|!:,.;]*[-A-Z0-9+&@#\
 var imgRegex = /(~[^~]+~)+/g;
 function linkify(text) {
     return text.replace(imgRegex, function(url) {
-        is_image(url.slice(1, -1), function(){return '<img src="' + url.slice(1, -1) + '">';}, function(){return '';});
+        var temp;
+        is_image(url.slice(1, -1), function(){temp = '<img src="' + url.slice(1, -1) + '">';}, function(){temp = '';});
+        return temp;
     });
     return text.replace(urlRegex, function(url) {
         if (url.match(/\.(jpeg|jpg|svg|webp|tif|heic|gif|png)$/) == null) {
