@@ -745,19 +745,7 @@ var urlRegex =/(\b(https?|ftp|file):\/\/[-A-Z0-9+&@#\/%?=~_|!:,.;]*[-A-Z0-9+&@#\
 var imgRegex = /(~[^~]+~)+/g;
 function linkify(text) {
     return text.replace(imgRegex, function(url) {
-        var temp;
-        checkImg(url.slice(1, -1)).then((response) => {
-            console.log("a" + response.status);
-            console.log("b" + response);
-            if (response) {
-                temp = '<img src="' + url.slice(1, -1) + '">'; // figure out width & height later
-            } else {
-                temp = '';
-            }
-            console.log("c" + temp);
-        });
-        console.log("d" + temp);
-        return temp;
+        is_image(url.slice(1, -1), function(){return '<img src="' + url.slice(1, -1) + '">';}, function(){return '';}));
     });
     return text.replace(urlRegex, function(url) {
         if (url.match(/\.(jpeg|jpg|svg|webp|tif|heic|gif|png)$/) == null) {
@@ -786,6 +774,21 @@ function checkImg(url) {
         img.onload = () => resolve(true);
         img.onerror = () => resolve(false);
     });
+}
+
+function is_image(url, callback, errorcallback) {
+    var img = new Image();
+    if (typeof(errorcallback) === "function") {
+        img.onerror = function() { errorcallback(); }
+    } else {
+        img.onerror = function() { return false; }
+    }
+    if (typeof(callback) === "function") {
+        img.onload = function() { callback(); }
+    } else {
+        img.onload = function() { return true; }
+    }
+    img.src = url;
 }
 
 function checkUrl(supposed) {
