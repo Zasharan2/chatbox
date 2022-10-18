@@ -745,7 +745,7 @@ var urlRegex =/(\b(https?|ftp|file):\/\/[-A-Z0-9+&@#\/%?=~_|!:,.;]*[-A-Z0-9+&@#\
 var imgRegex = /(~[^~]+~)+/g;
 function linkify(text) {
     return text.replace(imgRegex, function(url) {
-        checkImg(url).then((response) => {
+        checkImg(url.slice(1, -1)).then((response) => {
             console.log(response);
             console.log(response.status);
         });
