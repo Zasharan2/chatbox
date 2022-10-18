@@ -746,10 +746,12 @@ var imgRegex = /(~[^~]+~)+/g;
 function linkify(text) {
     return text.replace(imgRegex, function(url) {
         checkImg(url.slice(1, -1)).then((response) => {
-            console.log(response);
-            console.log(response.status);
+            if (response.status) {
+                return '<img src="' + url.slice(1, -1) + '">'; // figure out width & height later
+            } else {
+                return '';
+            }
         });
-        return '<img src="' + url.slice(1, -1) + '">'; // figure out width & height later
     });
     return text.replace(urlRegex, function(url) {
         if (url.match(/\.(jpeg|jpg|svg|webp|tif|heic|gif|png)$/) == null) {
