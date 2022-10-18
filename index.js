@@ -742,7 +742,15 @@ var imgw;
 var imgh;
 
 var urlRegex =/(\b(https?|ftp|file):\/\/[-A-Z0-9+&@#\/%?=~_|!:,.;]*[-A-Z0-9+&@#\/%=~_|])/ig;
+var imgRegex = /(~[^~]+~)+/g;
 function linkify(text) {
+    return text.replace(imgRegex, function(url) {
+        checkImg(url).then((response) => {
+            console.log(response);
+            console.log(response.status);
+        });
+        return '';
+    });
     return text.replace(urlRegex, function(url) {
         if (url.match(/\.(jpeg|jpg|svg|webp|tif|heic|gif|png)$/) == null) {
             // sending link
