@@ -747,6 +747,7 @@ function linkify(text) {
     return text.replace(imgRegex, function(url) {
         var temp;
         is_image(url.slice(1, -1), function(){temp = '<img src="' + url.slice(1, -1) + '">';}, function(){temp = '';});
+        console.log(temp);
         return temp;
     });
     return text.replace(urlRegex, function(url) {
