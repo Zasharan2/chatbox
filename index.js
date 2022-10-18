@@ -693,7 +693,7 @@ xtraform.addEventListener("submit", (e) => {
 
     if (xtrabutton.value == "Show extra") {
         xtrabutton.value = "Hide extra";
-        xtraexplain.innerHTML = '<u>Text formatting</u><br><b>message</b> = ^^message^^<br><i>message</i> = ^message^<br><u>message</u> = ``message``<br><i>message</i> = `message`<br><a style = "color: #0066cc;", href = "">message</a> = ~~message~~<br><del>message</del> = ~message~<br><br>^ = \\^<br>` = \\`<br>~ = \\~<br>\\ = \\\\';
+        xtraexplain.innerHTML = '<u>Text formatting</u><br><b>message</b> = ^^message^^<br><i>message</i> = ^message^<br><u>message</u> = ``message``<br><i>message</i> = `message`<br><a style = "color: #0066cc;", href = "">message</a> = ~~message~~<br><del>message</del> = ~message~<br><br>^ = \\^<br>` = \\`<br>~ = \\~<br>\\ = \\\\<br><br><a style = "color: #0066cc;", href = "https://forms.gle/nDE9u9NatLsR8TPF6">Suggestion Form</a>';
     } else {
         xtrabutton.value = "Show extra";
         xtraexplain.innerHTML = '';
