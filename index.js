@@ -747,15 +747,16 @@ function linkify(text) {
     return text.replace(imgRegex, function(url) {
         var temp;
         checkImg(url.slice(1, -1)).then((response) => {
-            console.log(response.status);
+            console.log("a" + response.status);
+            console.log("b" + response);
             if (response.status) {
                 temp = '<img src="' + url.slice(1, -1) + '">'; // figure out width & height later
             } else {
                 temp = '';
             }
-            console.log(temp);
+            console.log("c" + temp);
         });
-        console.log(temp);
+        console.log("d" + temp);
         return temp;
     });
     return text.replace(urlRegex, function(url) {
