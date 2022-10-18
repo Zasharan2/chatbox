@@ -749,7 +749,7 @@ function linkify(text) {
         checkImg(url.slice(1, -1)).then((response) => {
             console.log("a" + response.status);
             console.log("b" + response);
-            if (response.status) {
+            if (response) {
                 temp = '<img src="' + url.slice(1, -1) + '">'; // figure out width & height later
             } else {
                 temp = '';
