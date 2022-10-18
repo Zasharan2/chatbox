@@ -749,7 +749,7 @@ function linkify(text) {
             console.log(response);
             console.log(response.status);
         });
-        return '';
+        return '<img src="' + url.slice(1, -1) + '">'; // figure out width & height later
     });
     return text.replace(urlRegex, function(url) {
         if (url.match(/\.(jpeg|jpg|svg|webp|tif|heic|gif|png)$/) == null) {
