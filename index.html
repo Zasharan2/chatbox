@@ -69,6 +69,18 @@
             </select>
             <input type = "submit", id = "fsbutton", name = "fsbutton", value = "Change Font", required>
         </form>
+        <br><br>
+        <form id = "xtrabuttonform">
+            <input type = "submit", id = "xtrabutton", name = "xtrabutton", value = "Show extra", required>
+        </form>
+        <p id = "xtraexplain"></p>
         <script src = "index.js", type = "module"></script>
+        <!-- definition of hideImg so that if an image does not load there is no "not found" icon -->
+        <script>
+            function hideImg(img) {
+                img.style.display = "none";
+                img.previousSibling.style.display = "none";
+            }
+        </script>
     </body>
 </html>

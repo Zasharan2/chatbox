@@ -250,10 +250,26 @@ function loadchatroom(chatName, createorjoin) {
 
             // check the length of message without counting length of image or link
             smfNew = smf;
+            console.log(smfNew);
             smfMatch = [];
             if (smf.includes("<")) {
+                smfMatch = smf.match(/(<img[^<>]*>[^<>]*<\/img>)|(<a[^<>]*>[^<>]*<\/a>)+/g);
+                if (smfMatch == null) {
+                    smfMatch = [];
+                }
+
+                for (var i = 0; i < smfMatch.length; i++) {
+                    // replace each item inside <img> or <a> with nothingness
+                    smfNew = smfNew.replace(smfMatch[i], "");
+                }
+
                 // match anything inside <>
-                smfMatch = smf.match(/(<[^<>]+>)+/g);
+                smfMatch = smfNew.match(/(<[^<>]+>)+/g);
+
+                if (smfMatch == null) {
+                    smfMatch = [];
+                }
+
                 for (var i = 0; i < smfMatch.length; i++) {
                     // replace each item inside <> with nothingness
                     smfNew = smfNew.replace(smfMatch[i], "");
@@ -262,15 +278,20 @@ function loadchatroom(chatName, createorjoin) {
                 // reset smfMatch to exclusively match img and a tags (for later use with link and image limits)
                 if (smf.includes("<img") || smf.includes("<a")) {
                     // if there are such tags, identify those ones only
-                    smfMatch = smf.match(/(<img [^<>]*>)|(<a [^<>]*>)+/g);
+//                    smfMatch = smf.match(/(<img[^<>]*>)|(<a[^<>]*>)+/g);
+                    smfMatch = smf.match(/(<img[^<>]*>[^<>]*<\/img>)|(<a[^<>]*>[^<>]*<\/a>)+/g);
+                    if (smfMatch == null) {
+                        smfMatch = [];
+                    }
                 } else {
                     // if there are no such tags, revert back to empty list once more
                     smfMatch = [];
                 }
             }
+            console.log(smfNew);
 
             // cap message length limit
-            if (smfNew.length < 401 && smfMatch.length < 4) {
+            if (smfNew.length < 401 && smfMatch.length < 2) {
                 if (chatValid == true) {
                     // format and send the message
                     send = today.toLocaleDateString("en-US", options) + ' <span class = "userhover", style = "color: #' + colour + '"><b>' + nick + ':</b></span> ' + smf + '<div class = "emailhover userhover">' + userEmail + '</div>';
@@ -288,7 +309,7 @@ function loadchatroom(chatName, createorjoin) {
                     smerror.innerHTML = "Error: The room you are trying to talk in no longer exists. This could be due to a code change or full deletion of the room."
                 }
             } else {
-                if (smfMatch.length < 4) {
+                if (smfMatch.length < 2) {
                     // display character limit error
                     smerror.innerHTML = "Error: The message you have tried to send is " + String(smfNew.length - 400) + " characters over the character limit (400)."
                     // unitary case
@@ -297,10 +318,10 @@ function loadchatroom(chatName, createorjoin) {
                     }
                 } else {
                     // display more than 3 image limit error
-                    smerror.innerHTML = "Error: The message you have tried to send contains " + String(smfMatch.length - 3) + " more images/links than the image/link limit allows (3)."
+                    smerror.innerHTML = "Error: The message you have tried to send contains " + String(smfMatch.length - 1) + " more images/links than the image/link limit allows (1)."
                     // unitary case
-                    if (smfMatch.length - 3 == 1) {
-                        smerror.innerHTML = "Error: The message you have tried to send contains " + String(smfMatch.length - 3) + " more image/link than the image/link limit allows (3)."
+                    if (smfMatch.length - 1 == 1) {
+                        smerror.innerHTML = "Error: The message you have tried to send contains " + String(smfMatch.length - 1) + " more image/link than the image/link limit allows (1)."
                     }
                 }
             }
@@ -637,7 +658,7 @@ fsform.addEventListener("submit", (e) => {
             localStorage.setItem("fontpreference", "Wire One");
             break;
         }
-        case "Lobster": {
+        case "Lobster": {fontselectform
             fcss.href = "font_lb.css";
             localStorage.setItem("fontpreference", "Lobster");
             break;
@@ -662,6 +683,24 @@ fsform.addEventListener("submit", (e) => {
         }
     }
 });
+
+var xtraform = document.getElementById("xtrabuttonform");
+var xtrabutton = document.getElementById("xtrabutton");
+var xtraexplain = document.getElementById("xtraexplain");
+xtraform.addEventListener("submit", (e) => {
+    e.preventDefault();
+    e.stopImmediatePropagation();
+
+    if (xtrabutton.value == "Show extra") {
+        xtrabutton.value = "Hide extra";
+        xtraexplain.innerHTML = '<u>Text formatting</u><br><b>message</b> = ^^message^^<br><i>message</i> = ^message^<br><u>message</u> = ``message``<br><i>message</i> = `message`<br><a style = "color: #0066cc;", href = "">message</a> = ~~message~~<br><del>message</del> = ~message~';
+    } else {
+        xtrabutton.value = "Show extra";
+        xtraexplain.innerHTML = '';
+    }
+
+    xtraform.reset();
+})
 
 // get client variable for preferred font
 if (!(localStorage.getItem("fontpreference") == null)) {
@@ -742,13 +781,14 @@ var imgw;
 var imgh;
 
 var urlRegex =/(\b(https?|ftp|file):\/\/[-A-Z0-9+&@#\/%?=~_|!:,.;]*[-A-Z0-9+&@#\/%=~_|])/ig;
-var imgRegex = /(~[^~]+~)+/g;
+var imgRegex = /(~~[^~]+~~)+/g;
 function linkify(text) {
     return text.replace(imgRegex, function(url) {
+        return '<a style = "color: #0066cc;", href ="' + url.slice(2, -2) + '">' + url.slice(2, -2) + '</a><br><img src = "' + url.slice(2, -2) + '", height = "400px", onerror="hideImg(this)">';/*
         var temp;
         temp = checkImg(url.slice(-1, 1));
         sleep(500);
-        console.log(temp);/*
+        console.log(temp);
         .then((result) => {
             if (result) {
                 temp = '<img src="' + url.slice(1, -1) + '">';
@@ -756,9 +796,9 @@ function linkify(text) {
                 temp = '';
             }
         });
-        sleep(500);*/
-        return '';
-    });
+        sleep(500);
+        return '';*/
+    });/*
     return text.replace(urlRegex, function(url) {
         if (url.match(/\.(jpeg|jpg|svg|webp|tif|heic|gif|png)$/) == null) {
             // sending link
@@ -776,7 +816,7 @@ function linkify(text) {
             }
             return '<img src="' + url + '", width = "' + imgw + 'px", height = "' + imgh + 'px">';
         }
-    });
+    });*/
 }
 
 function checkImg(url) {
@@ -821,17 +861,17 @@ function sleep(milliseconds) {
     }
 }
 
-var cancelledAsterisk = /\\\*/g;
-var cancelledUnderscore = /\\\_/g;
+var cancelledCaret = /\\\^/g;
+var cancelledGrave = /\\\`/g;
 var cancelledTilde = /\\~/g;
 var cancelledBackslash = /\\\\/g;
-var boldRegex = /(\*\*[^\*]+\*\*)+/g;
-var italicRegex1 = /(\*[^\*]+\*)+/g;
-var underlineRegex = /(\_\_[^\_]+\_\_)+/g;
-var italicRegex2 = /(\_[^\_]+\_)+/g;
-var strikethroughRegex = /(~~[^~]+~~)+/g;
+var boldRegex = /(\^\^[^\^]+\^\^)+/g; //          /(\*\*[^\*]+\*\*)+/g           /(<[^\*<]*\*\*[^\*]*\*\*[^\*>]*>)+/g
+var italicRegex1 = /(\^[^\^]+\^)+/g;
+var underlineRegex = /(\`\`[^\`]+\`\`)+/g;
+var italicRegex2 = /(\`[^\`]+\`)+/g;
+var strikethroughRegex = /(~[^~]+~)+/g;
 function stylify(text) {
-    return text.replace(cancelledAsterisk, "&#42;").replace(cancelledUnderscore, "&#95;").replace(cancelledTilde, "&#126;").replace(cancelledBackslash, "&#92;").replace(boldRegex, function(matched) {
+    return text.replace(cancelledCaret, "&#94;").replace(cancelledGrave, "&#96;").replace(cancelledTilde, "&#126;").replace(cancelledBackslash, "&#92;").replace(boldRegex, function(matched) {
         return "<b>" + matched.substring(2, matched.length - 2) + "</b>";
     }).replace(italicRegex1, function (matched) {
         return "<i>" + matched.substring(1, matched.length - 1) + "</i>";
@@ -840,7 +880,7 @@ function stylify(text) {
     }).replace(italicRegex2, function (matched) {
         return "<i>" + matched.substring(1, matched.length - 1) + "</i>";
     }).replace(strikethroughRegex, function (matched) {
-        return "<del>" + matched.substring(2, matched.length - 2) + "</del>";
+        return "<del>" + matched.substring(1, matched.length - 1) + "</del>";
     });
 }
 
