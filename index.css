@@ -9,3 +9,7 @@ html {
 .userhover:hover + .emailhover {
     display: block;
 }
+
+.emailhover:hover {
+    display: block;
+}
