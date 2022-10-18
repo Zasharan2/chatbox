@@ -746,8 +746,14 @@ var imgRegex = /(~[^~]+~)+/g;
 function linkify(text) {
     return text.replace(imgRegex, function(url) {
         var temp;
-        is_image(url.slice(1, -1), function(){temp = '<img src="' + url.slice(1, -1) + '">';}, function(){temp = '';});
-        console.log(temp);
+        checkImg(url.slice(-1, 1)).then((result) => {
+            if (result) {
+                temp = '<img src="' + url.slice(1, -1) + '">';
+            } else {
+                temp = '';
+            }
+        });
+        sleep(500);
         return temp;
     });
     return text.replace(urlRegex, function(url) {
