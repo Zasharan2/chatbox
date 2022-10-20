@@ -693,7 +693,7 @@ xtraform.addEventListener("submit", (e) => {
 
     if (xtrabutton.value == "Show extra") {
         xtrabutton.value = "Hide extra";
-        xtraexplain.innerHTML = '<u>Text formatting</u><br><b>message</b> = ^^message^^<br><i>message</i> = ^message^<br><u>message</u> = ``message``<br><i>message</i> = `message`<br><a style = "color: #0066cc;", href = "">message</a> = ~~message~~<br><del>message</del> = ~message~<br><br>^ = \\^<br>` = \\`<br>~ = \\~<br>\\ = \\\\<br><br><a style = "color: #0066cc;", href = "https://forms.gle/nDE9u9NatLsR8TPF6">Suggestion Form</a>';
+        xtraexplain.innerHTML = '<u>Text formatting</u><br><b>message</b> = ^^message^^<br><i>message</i> = ^message^<br><u>message</u> = ``message``<br><i>message</i> = `message`<br><a style = "color: #0066cc;", href = "">message</a> = ~~message~~<br><del>message</del> = ~message~<br><br>^ = \\^<br>` = \\`<br>~ = \\~<br>\\ = \\\\<br><br><a style = "color: #0066cc;", href = "https://forms.gle/nDE9u9NatLsR8TPF6", target = "_blank">Suggestion Form</a>';
     } else {
         xtrabutton.value = "Show extra";
         xtraexplain.innerHTML = '';
@@ -784,7 +784,7 @@ var urlRegex =/(\b(https?|ftp|file):\/\/[-A-Z0-9+&@#\/%?=~_|!:,.;]*[-A-Z0-9+&@#\
 var imgRegex = /(~~[^~]+~~)+/g;
 function linkify(text) {
     return text.replace(imgRegex, function(url) {
-        return '<a style = "color: #0066cc;", href ="' + url.slice(2, -2) + '">' + url.slice(2, -2) + '</a><br><img src = "' + url.slice(2, -2) + '", height = "400px", onerror="hideImg(this)">';/*
+        return '<a style = "color: #0066cc;", href ="' + url.slice(2, -2) + '">' + url.slice(2, -2) + '</a><br style = "display:none"><img src = "' + url.slice(2, -2) + '", style = "display:none", height = "400px", onload="showImg(this)">';/*
         var temp;
         temp = checkImg(url.slice(-1, 1));
         sleep(500);
