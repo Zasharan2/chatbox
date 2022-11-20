@@ -24,7 +24,9 @@ setPersistence(auth, browserLocalPersistence).catch((error) => {
     const errorMessage = error.message;
 });
 
-init();
+if (!(localStorage.getItem("kijeAnonLoggedIn") == "true")) {
+    init();
+}
 
 // Initialize Realtime Database and get a reference to the service
 const database = getDatabase(app);
@@ -51,6 +53,7 @@ lsoform.addEventListener("submit", (e) => {
         lsobutton.value = "Log In";
         signout();
     } else {
+        localStorage.setItem("kijeAnonLoggedIn", "false");
         signInWithRedirect(auth, provider);
     }
 
@@ -83,6 +86,8 @@ jrbform.addEventListener("submit", (e) => {
 var crform;
 var ownerpass = null;
 
+var siav = false;
+
 function loadcreateroom() {
     cont.innerHTML = '<form id = "createroomform"><input type = "text", id = "roomnameinput", name = "roomnameinput", placeholder = "Room code", required, autocomplete = "off", size = "30px"/><br><input type = "text", id = "roomnamepass", name = "roomnamepass", placeholder = "Owner password", required, autocomplete = "off", size = "30px"/><br><input type = "submit", id = "cr", name = "button", value = "Create Room", required/></form><p style = "color: #ff0000", id = "createroomerror"></p>'
 
@@ -105,13 +110,13 @@ function loadcreateroom() {
                     localStorage.setItem("kijecoj", "1");
                     localStorage.setItem("kijeop", ownerpass);
                     signInWithRedirect(auth, provider);*/
-                    if (loggedIn == "true") {
-                        initChat(joinCode, 1);
-                        loadchatroom(joinCode, 1);
-                    } else {
-                        document.getElementById("createroomerror").innerHTML = "You are not logged in!";
+                    if (loggedIn != "true") {
+                        //document.getElementById("createroomerror").innerHTML = "You are not logged in!";
+                        sia();
                     }
-        
+                    initChat(joinCode, 1);
+                    loadchatroom(joinCode, 1);
+    
                     crform.reset();
                 }
             });
@@ -146,13 +151,13 @@ function loadjoinroom() {
                     localStorage.setItem("kijejc", joinCode);
                     localStorage.setItem("kijecoj", "0");
                     signInWithRedirect(auth, provider);*/
-                    if (loggedIn == "true") {
-                        initChat(joinCode, 0);
-                        loadchatroom(joinCode, 0);
-                    } else {
-                        document.getElementById("joinroomerror").innerHTML = "You are not logged in!";
+                    if (loggedIn != "true") {
+                        //document.getElementById("joinroomerror").innerHTML = "You are not logged in!";
+                        sia();
                     }
-                }
+                    initChat(joinCode, 0);
+                    loadchatroom(joinCode, 0);
+            }
             });
             jrform.reset();
         }
@@ -188,7 +193,7 @@ var focused = true;
 var icon = document.getElementById("icon");
 var title = document.getElementById("title");
 var rm; // recent message
-var userEmail;
+var userEmail = "";
 
 // get client variable for preferred nickname
 if (!(localStorage.getItem("nicknamepreference") == null)) {
@@ -294,7 +299,11 @@ function loadchatroom(chatName, createorjoin) {
             if (smfNew.length < 401 && smfMatch.length < 2) {
                 if (chatValid == true) {
                     // format and send the message
-                    send = today.toLocaleDateString("en-US", options) + ' <span class = "userhover", style = "color: #' + colour + '"><b>' + nick + ':</b></span> ' + smf + '<div class = "emailhover userhover">' + userEmail + '</div>';
+                    if (siav) {
+                        send = today.toLocaleDateString("en-US", options) + ' <span class = "userhover", style = "color: #' + colour + '"><b>' + nick + ':</b></span> ' + smf;
+                    } else {
+                        send = today.toLocaleDateString("en-US", options) + ' <span class = "userhover", style = "color: #' + colour + '"><b>' + nick + ':</b></span> ' + smf + '<div class = "emailhover userhover">' + userEmail + '</div>';
+                    }
                     update(chatRef, {
                         recentMessage: send
                     });
@@ -495,11 +504,16 @@ function initChat(chatName, createorjoin) {
 
     onAuthStateChanged(auth, (user) => {
         if (user) {
-            localStorage.setItem("kijeLoggedIn", "true");
-            loggedIn = "true";
-            lsobutton.value = "Sign Out";
-
-            userEmail = user.email;
+            if (!siav) {
+                localStorage.setItem("kijeLoggedIn", "true");
+                loggedIn = "true";
+                lsobutton.value = "Sign Out";
+                userEmail = user.email;
+            } else {
+                localStorage.setItem("kijeLoggedIn", "false");
+                loggedIn = "false";
+                userEmail = "";
+            }
 
             chatRef = ref(database, `chats/${chatName}`);
 
@@ -586,6 +600,19 @@ function initChat(chatName, createorjoin) {
         
         console.log(errorCode, errorMessage);
     });*/
+}
+
+function sia() {
+    signInAnonymously(auth).catch((error) => {
+        const errorCode = error.code;
+        const errorMessage = error.message;
+        
+        console.log(errorCode, errorMessage);
+    });
+    localStorage.setItem("kijeAnonLoggedIn", "true");
+    siav = true;
+    localStorage.setItem("kijeLoggedIn", "false");
+    loggedIn = "false";
 }
 
 function signout() {
