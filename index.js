@@ -1,914 +1,1612 @@
-// Import the functions you need from the SDKs you need
-import { initializeApp } from "https://www.gstatic.com/firebasejs/9.8.4/firebase-app.js";
-import { getAuth, signInAnonymously, onAuthStateChanged, GoogleAuthProvider, signInWithRedirect, getRedirectResult, signOut, setPersistence, browserLocalPersistence } from "https://www.gstatic.com/firebasejs/9.8.4/firebase-auth.js";
-import { getDatabase, ref, set, onDisconnect, onValue, onChildAdded, onChildRemoved, get, child, update, remove } from "https://www.gstatic.com/firebasejs/9.8.4/firebase-database.js";
+var c = document.getElementById("gameCanvas");
+var ctx = c.getContext("2d");
 
-// Your web app's Firebase configuration
-const firebaseConfig = {
-    apiKey: "AIzaSyDm-Je7iI-Nh1wtNaR3UwyzMR1LgciRZbU",
-    authDomain: "chat-a10b9.firebaseapp.com",
-    databaseURL: "https://chat-a10b9-default-rtdb.firebaseio.com",
-    projectId: "chat-a10b9",
-    storageBucket: "chat-a10b9.appspot.com",
-    messagingSenderId: "1032811906518",
-    appId: "1:1032811906518:web:1df866ea269fbf6ecb9077"
+var keys = [];
+
+window.addEventListener("keydown", function(event) {
+    keys[event.key] = true;
+}, false);
+window.addEventListener("keyup", function(event) {
+    keys[event.key] = false;
+}, false);
+
+var mouseX, mouseY;
+
+c.addEventListener('contextmenu', function(event) {
+    event.preventDefault();
+});
+
+window.addEventListener("mousemove", function(event) {
+    mouseX = event.clientX - c.getBoundingClientRect().left;
+    mouseY = event.clientY - c.getBoundingClientRect().top;
+});
+
+var mouseDown, mouseButton;
+
+window.addEventListener("mousedown", function(event) {
+    mouseDown = true;
+    mouseButton = event.buttons;
+});
+
+window.addEventListener("mouseup", function(event) {
+    mouseDown = false;
+});
+
+const CLICK = {
+    LEFT: 1,
+    RIGHT: 2
 };
 
-// Initialize Firebase
-const app = initializeApp(firebaseConfig);
-
-const provider = new GoogleAuthProvider();
-const auth = getAuth();
-setPersistence(auth, browserLocalPersistence).catch((error) => {
-    const errorCode = error.code;
-    const errorMessage = error.message;
-});
-
-if (!(localStorage.getItem("kijeAnonLoggedIn") == "true")) {
-    init();
+const SCREENTYPE = {
+    TITLE: 1,
+    TITLE_TO_LOCALGAME: 1.2,
+    TITLE_TO_ONLINEGAME: 1.3,
+    TITLE_TO_SETTINGS: 1.4,
+    LOCALGAME: 2,
+    ONLINEGAME: 3,
+    SETTINGS: 4,
+    SETTINGS_TO_TITLE: 4.1
 }
 
-// Initialize Realtime Database and get a reference to the service
-const database = getDatabase(app);
+var gameScreen;
 
-// get login state
-var loggedIn = localStorage.getItem("kijeLoggedIn");
+var spritesheet = document.getElementById("spritesheet");
 
-// display correct text on login/signout button
-var lsobutton = document.getElementById("lsobutton");
-if (loggedIn == "true") {
-    lsobutton.value = "Sign Out";
-} else {
-    lsobutton.value = "Log In";
-}
+const PIECE = {
+    BLANK: -1,
+    KING: 0,
+    QUEEN: 1,
+    BISHOP: 2,
+    KNIGHT: 3,
+    ROOK: 4,
+    PAWN: 5
+};
 
-var lsoform = document.getElementById("loginsignoutform");
-lsoform.addEventListener("submit", (e) => {
-    e.preventDefault();
-    e.stopImmediatePropagation();
+const COLOUR = {
+    WHITE: 0,
+    BLACK: 1
+};
 
-    if (loggedIn == "true") {
-        localStorage.setItem("kijeLoggedIn", "false");
-        loggedIn = "false";
-        lsobutton.value = "Log In";
-        signout();
-    } else {
-        localStorage.setItem("kijeAnonLoggedIn", "false");
-        signInWithRedirect(auth, provider);
+var turn = COLOUR.WHITE;
+
+class BoardPos {
+    constructor(x, y, z) {
+        this.x = x;
+        this.y = y;
+        this.z = z;
     }
 
-    lsoform.reset();
-})
-
-var cont = document.getElementById("pagecontainer");
-
-var crbform = document.getElementById("createroombuttonform");
-crbform.addEventListener("submit", (e) => {
-    e.preventDefault();
-    e.stopImmediatePropagation();
-
-    loadcreateroom();
-//    loadchatroom(Date.now());
-
-    crbform.reset();
-});
-
-var jrbform = document.getElementById("joinroombuttonform");
-jrbform.addEventListener("submit", (e) => {
-    e.preventDefault();
-    e.stopImmediatePropagation();
-
-    loadjoinroom();
-
-    jrbform.reset();
-});
-
-var crform;
-var ownerpass = null;
-
-var siav = false;
-
-function loadcreateroom() {
-    cont.innerHTML = '<form id = "createroomform"><input type = "text", id = "roomnameinput", name = "roomnameinput", placeholder = "Room code", required, autocomplete = "off", size = "30px"/><br><input type = "text", id = "roomnamepass", name = "roomnamepass", placeholder = "Owner password", required, autocomplete = "off", size = "30px"/><br><input type = "submit", id = "cr", name = "button", value = "Create Room", required/></form><p style = "color: #ff0000", id = "createroomerror"></p>'
-
-    crform = document.getElementById("createroomform");
-    crform.addEventListener("submit", (e) => {
-        var joinCode = sanitise(String(document.forms["createroomform"]["roomnameinput"].value));
-        ownerpass = sanitise(String(document.forms["createroomform"]["roomnamepass"].value));
-        if ((joinCode.length > 0) && (ownerpass.length > 0)) {
-            e.preventDefault();
-            e.stopImmediatePropagation();
-            get(child(ref(database), `chats/${joinCode}`)).then((snapshot) => {
-                if (!snapshot.exists()) {
-                    e.preventDefault();
-                    e.stopImmediatePropagation();
-
-                    // connect to firebase
-                    /*
-                    localStorage.setItem("kijeredirected", "true");
-                    localStorage.setItem("kijejc", joinCode);
-                    localStorage.setItem("kijecoj", "1");
-                    localStorage.setItem("kijeop", ownerpass);
-                    signInWithRedirect(auth, provider);*/
-                    if (loggedIn != "true") {
-                        //document.getElementById("createroomerror").innerHTML = "You are not logged in!";
-                        sia();
-                    }
-                    initChat(joinCode, 1);
-                    loadchatroom(joinCode, 1);
-    
-                    crform.reset();
-                }
-            });
-            crform.reset();
-        }
-    });
-}
-
-var jrform;
-
-function loadjoinroom() {
-    cont.innerHTML = '<form id = "joinroomform"><input type = "text", id = "roomnameinput", name = "roomnameinput", placeholder = "Room code", required, autocomplete = "off", size = "30px"/><br><input type = "text", id = "roomnamepass", name = "roomnamepass", placeholder = "Owner password (optional)", required, autocomplete = "off", size = "30px"/><br><input type = "submit", id = "cr", name = "button", value = "Join Room", required/></form><p style = "color: #ff0000", id = "joinroomerror"></p>'
-
-    jrform = document.getElementById("joinroomform");
-    jrform.addEventListener("submit", (e) => {
-        var joinCode = sanitise(String(document.forms["joinroomform"]["roomnameinput"].value));
-        var potentialOwnerpassconsole = sanitise(String(document.forms["joinroomform"]["roomnamepass"].value));
-        if ((joinCode.length > 0)) {
-            e.preventDefault();
-            e.stopImmediatePropagation();
-            get(child(ref(database), `chats/${joinCode}`)).then((snapshot) => {
-                if (snapshot.exists()) {
-                    /*
-                    if (potentialOwnerpassconsole == snapshot.val()["ownerPass"]) {*/
-                        ownerpass = potentialOwnerpassconsole;/*
-                        localStorage.setItem("kijeop", ownerpass);
-                    } else {
-                        localStorage.setItem("kijeop", "");
-                    }
-                    // connect to firebase
-                    localStorage.setItem("kijeredirected", "true");
-                    localStorage.setItem("kijejc", joinCode);
-                    localStorage.setItem("kijecoj", "0");
-                    signInWithRedirect(auth, provider);*/
-                    if (loggedIn != "true") {
-                        //document.getElementById("joinroomerror").innerHTML = "You are not logged in!";
-                        sia();
-                    }
-                    initChat(joinCode, 0);
-                    loadchatroom(joinCode, 0);
-            }
-            });
-            jrform.reset();
-        }
-    });
-}
-
-var nd;
-var cd;
-var chat;
-var smf;
-var smfMatch;
-var smfNew;
-var nick = "Anonymous User";
-var send;
-var chatRef;
-var chatValid;
-var today;
-var lastmessagesenttime = new Date();
-var options;
-var smform;
-var smerror;
-var ncform;
-var ccform;
-var ccdform;
-var dform;
-var sopform;
-var logform;
-var logtext;
-var logdownloadelement;
-var toreplace;
-var colour = "ffffff";
-var focused = true;
-var icon = document.getElementById("icon");
-var title = document.getElementById("title");
-var rm; // recent message
-var userEmail = "";
-
-// get client variable for preferred nickname
-if (!(localStorage.getItem("nicknamepreference") == null)) {
-    nick = localStorage.getItem("nicknamepreference");
-}
-
-// get client variable for preferred colour
-if (!(localStorage.getItem("colourpreference") == null)) {
-    colour = localStorage.getItem("colourpreference");
-}
-/*
-if (localStorage.getItem("kijeredirected") == "true") {
-    localStorage.setItem("kijeredirected", "false");
-    ownerpass = localStorage.getItem("kijeop");
-    localStorage.setItem("kijeop", "");
-    initChat(localStorage.getItem("kijejc"), Number(localStorage.getItem("kijecoj")));
-    loadchatroom(localStorage.getItem("kijejc"), Number(localStorage.getItem("kijecoj")));
-    localStorage.setItem("kijejc", "");
-    localStorage.setItem("kijecoj", "");
-}*/
-
-function loadchatroom(chatName, createorjoin) {
-    chatValid = true;
-
-    // set chat contents
-    if (ownerpass == null || !(ownerpass.length > 0)) {
-        cont.innerHTML = '<b>Please note that you will not be able to see messages sent before the tab was opened. It is therefore recommended to keep this tab running in the background.</b><p id = "chat"></p><form id = "sendmessageform"><input type = "text", id = "sendmessage", name = "sendmessage", placeholder = "Message here...", required, autocomplete = "off"><input type = "submit", id = "smbutton", name = "button", value = "Send Message", required> <span style = "color: #ff0000", id = "smerror"></span></form><form id = "changenickform"><input type = "text", id = "changenick", name = "changenick", placeholder = "Set nickname...", required, autocomplete = "off"><input type = "submit", id = "cnbutton", name = "button", value = "Set Nickname", required></form><form id = "changecolourform"><input type = "text", id = "changecolour", name = "changecolour", placeholder = "Set colour (hex)...", required, autocomplete = "off"><input type = "submit", id = "ccbutton", name = "button", value = "Set Colour", required></form><p id = "nickdisplay">Current Nickname: <span style = "color: #' + colour + '"><b>' + nick + '</b></span></p><p id = "codedisplay"></p><form id = "logbuttonform"><input type = "submit", id = "logbutton", name = "button", value = "Download log", required></form>';
-    } else {
-        cont.innerHTML = '<b>Please note that you will not be able to see messages sent before the tab was opened. It is therefore recommended to keep this tab running in the background.</b><p id = "chat"></p><form id = "sendmessageform"><input type = "text", id = "sendmessage", name = "sendmessage", placeholder = "Message here...", required, autocomplete = "off"><input type = "submit", id = "smbutton", name = "button", value = "Send Message", required> <span style = "color: #ff0000", id = "smerror"></span></form><form id = "changenickform"><input type = "text", id = "changenick", name = "changenick", placeholder = "Set nickname...", required, autocomplete = "off"><input type = "submit", id = "cnbutton", name = "button", value = "Set Nickname", required></form><form id = "changecolourform"><input type = "text", id = "changecolour", name = "changecolour", placeholder = "Set colour (hex)...", required, autocomplete = "off"><input type = "submit", id = "ccbutton", name = "button", value = "Set Colour", required></form><p id = "nickdisplay">Current Nickname: <span style = "color: #' + colour + '"><b>' + nick + '</b></span></p><p id = "codedisplay"></p><form id = "changecodeform"><input type = "text", id = "changecode", name = "changecode", placeholder = "Set new code", required, autocomplete = "off"><input type = "submit", id = "ccdbutton", name = "button", value = "Change code (members need new code)", required></form><form id = "setownerpassform"><input type = "text", id = "setownerpass", name = "setownerpass", placeholder = "Set new ownerpass", required, autocomplete = "off"><input type = "submit", id = "sopbutton", name = "button", value = "Set ownerpass", required></form><br><form id = "logbuttonform"><input type = "submit", id = "logbutton", name = "button", value = "Download log", required></form><br><form id = "delbuttonform"><input type = "submit", id = "delbutton", name = "button", value = "Delete Chatroom", style = "color: #ff0000", required></form>';
+    set(x, y, z) {
+        this.x = x;
+        this.y = y;
+        this.z = z;
     }
-
-    // set title to chat name
-    title.innerHTML = chatName;
-
-    nd = document.getElementById("nickdisplay");
-    cd = document.getElementById("codedisplay");
-    smerror = document.getElementById("smerror");
-    chat = document.getElementById("chat");
-    
-    // send message handling
-    smform = document.getElementById("sendmessageform");
-    smform.addEventListener("submit", (e) => {
-        // prevents page from reloading
-        e.preventDefault();
-
-        // prevents double submissions from one click
-        e.stopImmediatePropagation();
-
-        // get value submitted, sanitise and linkify it
-        smf = stylify(linkify(sanitise(String(document.forms["sendmessageform"]["sendmessage"].value))));
-
-        // get date to append to text
-        today = new Date();
-        options = { weekday: undefined, year: 'numeric', month: 'numeric', day: 'numeric', hour: "numeric", minute: "numeric", second: "numeric" };
-
-        // check the user hasn't sent anything within the second (if so they are likely spamming)
-        if (today.toLocaleDateString("en-US", options) != lastmessagesenttime.toLocaleDateString("en-US", options)) {
-            lastmessagesenttime = today;
-
-            // check the length of message without counting length of image or link
-            smfNew = smf;
-            console.log(smfNew);
-            smfMatch = [];
-            if (smf.includes("<")) {
-                smfMatch = smf.match(/(<img[^<>]*>[^<>]*<\/img>)|(<a[^<>]*>[^<>]*<\/a>)+/g);
-                if (smfMatch == null) {
-                    smfMatch = [];
-                }
-
-                for (var i = 0; i < smfMatch.length; i++) {
-                    // replace each item inside <img> or <a> with nothingness
-                    smfNew = smfNew.replace(smfMatch[i], "");
-                }
-
-                // match anything inside <>
-                smfMatch = smfNew.match(/(<[^<>]+>)+/g);
-
-                if (smfMatch == null) {
-                    smfMatch = [];
-                }
-
-                for (var i = 0; i < smfMatch.length; i++) {
-                    // replace each item inside <> with nothingness
-                    smfNew = smfNew.replace(smfMatch[i], "");
-                }
-
-                // reset smfMatch to exclusively match img and a tags (for later use with link and image limits)
-                if (smf.includes("<img") || smf.includes("<a")) {
-                    // if there are such tags, identify those ones only
-//                    smfMatch = smf.match(/(<img[^<>]*>)|(<a[^<>]*>)+/g);
-                    smfMatch = smf.match(/(<img[^<>]*>[^<>]*<\/img>)|(<a[^<>]*>[^<>]*<\/a>)+/g);
-                    if (smfMatch == null) {
-                        smfMatch = [];
-                    }
-                } else {
-                    // if there are no such tags, revert back to empty list once more
-                    smfMatch = [];
-                }
-            }
-            console.log(smfNew);
-
-            // cap message length limit
-            if (smfNew.length < 401 && smfMatch.length < 2) {
-                if (chatValid == true) {
-                    // format and send the message
-                    if (siav) {
-                        send = today.toLocaleDateString("en-US", options) + ' <span class = "userhover", style = "color: #' + colour + '"><b>' + nick + ':</b></span> ' + smf;
-                    } else {
-                        send = today.toLocaleDateString("en-US", options) + ' <span class = "userhover", style = "color: #' + colour + '"><b>' + nick + ':</b></span> ' + smf + '<div class = "emailhover userhover">' + userEmail + '</div>';
-                    }
-                    update(chatRef, {
-                        recentMessage: send
-                    });
-                    
-                    // clear error display
-                    smerror.innerHTML = "";
-                    
-                    // clear input field
-                    smform.reset();
-                } else {
-                    // display room not found error
-                    smerror.innerHTML = "Error: The room you are trying to talk in no longer exists. This could be due to a code change or full deletion of the room."
-                }
-            } else {
-                if (smfMatch.length < 2) {
-                    // display character limit error
-                    smerror.innerHTML = "Error: The message you have tried to send is " + String(smfNew.length - 400) + " characters over the character limit (400)."
-                    // unitary case
-                    if (smfNew.length - 400 == 1) {
-                        smerror.innerHTML = "Error: The message you have tried to send is " + String(smfNew.length - 400) + " character over the character limit (400)."
-                    }
-                } else {
-                    // display more than 3 image limit error
-                    smerror.innerHTML = "Error: The message you have tried to send contains " + String(smfMatch.length - 1) + " more images/links than the image/link limit allows (1)."
-                    // unitary case
-                    if (smfMatch.length - 1 == 1) {
-                        smerror.innerHTML = "Error: The message you have tried to send contains " + String(smfMatch.length - 1) + " more image/link than the image/link limit allows (1)."
-                    }
-                }
-            }
-
-        }
-    });
-
-    // nickname form handling
-    ncform = document.getElementById("changenickform");
-    ncform.addEventListener("submit", (e) => {
-        // prevents page from reloading
-        e.preventDefault();
-
-        // prevents double submissions from one click
-        e.stopImmediatePropagation();
-
-        // get value submitted, sanitise it
-        nick = sanitise(String(document.forms["changenickform"]["changenick"].value));
-
-        if (nick.length > 40) {
-            nick = nick.substring(0, 40);
-        }
-
-        // set client variable
-        localStorage.setItem("nicknamepreference", nick);
-
-        // display nickname
-        nd.innerHTML = 'Current Nickname: <span style = "color: #' + colour + '"><b>' + nick + '</b></span>';
-
-        // clear input field
-        ncform.reset();
-    });
-
-    // colour change form handling
-    ccform = document.getElementById("changecolourform");
-    ccform.addEventListener("submit", (e) => {
-        // prevents page from reloading
-        e.preventDefault();
-
-        // prevents double submissions from one click
-        e.stopImmediatePropagation();
-
-        // get value submitted, sanitise it
-        colour = sanitise(String(document.forms["changecolourform"]["changecolour"].value));
-
-        // set client variable
-        localStorage.setItem("colourpreference", colour);
-
-        // display colour
-        nd.innerHTML = 'Current Nickname: <span style = "color: #' + colour + '"><b>' + nick + '</b></span>';
-
-        // clear input field
-        ccform.reset();
-    });
-
-    if (!(ownerpass == null || !(ownerpass.length > 0))) {
-        // code change form handling
-        ccdform = document.getElementById("changecodeform");
-        ccdform.addEventListener("submit", (e) => {
-            // prevents page from reloading
-            e.preventDefault();
-
-            // prevents double submissions from one click
-            e.stopImmediatePropagation();
-
-            var newCode = sanitise(String(document.forms["changecodeform"]["changecode"].value));
-
-            remove(chatRef);
-            
-            loadchatroom(newCode, 1);
-
-            // clear input field
-            ccdform.reset();
-        });
-
-        // set ownerpass form handling
-        sopform = document.getElementById("setownerpassform");
-        sopform.addEventListener("submit", (e) => {
-            // prevents page from reloading
-            e.preventDefault();
-
-            // prevents double submissions from one click
-            e.stopImmediatePropagation();
-
-            ownerpass = sanitise(String(document.forms["setownerpassform"]["setownerpass"].value));
-
-            update(chatRef, {
-                ownerPass: ownerpass
-            });
-
-            // clear input field
-            sopform.reset();
-        });
-        
-        // code change form handling
-        dform = document.getElementById("delbuttonform");
-        dform.addEventListener("submit", (e) => {
-            // prevents double submissions from one click
-            e.stopImmediatePropagation();
-
-            remove(chatRef);
-
-            // clear input field
-            dform.reset();
-        });
-    }
-
-    // log button handling
-    logform = document.getElementById("logbuttonform");
-    logform.addEventListener("submit", (e) => {
-        // prevents page from reloading
-        e.preventDefault();
-
-        // prevents double submissions from one click
-        e.stopImmediatePropagation();
-
-        // create html element
-        logdownloadelement = document.createElement("a");
-
-        // replace html element <br> with \n
-        logtext = chat.innerHTML.replace(/<br>/g,"\n");
-
-        // loop until there are no more html tags (checked by searching for < and >)
-        while (!(logtext.indexOf("<") == -1 && logtext.indexOf(">") == -1)) {
-            // locate image tags and replace them with the image source link
-            toreplace = "";
-            if ((logtext.indexOf('<img src="') != -1) && (logtext.indexOf('<img src="') == logtext.indexOf("<"))) {
-                toreplace = logtext.substring(logtext.indexOf('<img src="') + 10, logtext.indexOf('"', logtext.indexOf('"') + 1));
-            }
-            logtext = logtext.replace(logtext.substring(logtext.indexOf("<"), logtext.indexOf(">") + 1), toreplace);
-        }
-        // remove first two \n characters
-        logtext = logtext.slice(2);
-        // unsanitise text (so that they show up better in the logs)
-        logtext = logtext.replace(/&amp;/g, '&').replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&quot;/g, '"').replace(/&apos;/g, "'");
-        // give the html element a source to the logtext
-        logdownloadelement.setAttribute("href", "data:text/plain;charset=utf-8," + encodeURIComponent(logtext));
-        // make the html element a download
-        logdownloadelement.setAttribute("download", chatName + ".txt");
-        // set the html element to not display
-        logdownloadelement.style.display = "none";
-        // add the element to the dom
-        document.body.appendChild(logdownloadelement);
-        // click the element
-        logdownloadelement.click();
-        // remove the element from the dom
-        document.body.removeChild(logdownloadelement);
-
-        // reset the form? idr what this code does lmao
-        logform.reset();
-    });
-
-    // display room code at the bottom
-    cd.innerHTML = "Room code: <b>" + chatName + "</b>";
 }
 
-function init() {
-    onAuthStateChanged(auth, (user) => {
-        if (user) {
-            localStorage.setItem("kijeLoggedIn", "true");
-            loggedIn = "true";
-            lsobutton.value = "Sign Out";
+var moveToList = [];
+
+var boardLength = 8;
+var typeBoard = Array(boardLength).fill().map(() => Array(boardLength).fill().map(() => Array(boardLength).fill(-1)));
+var colourBoard = Array(boardLength).fill().map(() => Array(boardLength).fill().map(() => Array(boardLength).fill(-1)));
+var countBoard = Array(boardLength).fill().map(() => Array(boardLength).fill().map(() => Array(boardLength).fill(0)));
+var checkBoard = Array(boardLength).fill().map(() => Array(boardLength).fill().map(() => Array(boardLength).fill(0)));
+
+var selected = new BoardPos(-1, -1, -1);
+
+var showLabels = true;
+
+var moveList = "";
+
+var bluebird = document.getElementById("bluebird");
+bluebird.loop = true;
+
+var capturedCounts = [0, 0, 0, 0, 0, 0, 0, 0, 0, 0];
+
+function drawBackground() {
+    // background
+    ctx.beginPath();
+    // right background
+    ctx.fillStyle = "#663300";
+    ctx.fillRect(512, 0, 512, 4096);
+    // left background
+    ctx.fillStyle = "#442200";
+    ctx.fillRect(0, 0, 512, 4096);
+    // move list background
+    ctx.fillStyle = "#442200";
+    ctx.fillRect(520, 50, 220, 4030);
+
+    // move list label
+    ctx.beginPath();
+    ctx.fillStyle = "#ffffff";
+    ctx.font = "30px Arial";
+    ctx.fillText("Move List", 565, 36);
+    ctx.font = "15px Arial";
+    for (var ii = 0; ii < moveList.split("\n").length; ii++) {
+        for (var jj = 0; jj < moveList.split("\n")[ii].split("\\").length; jj++) {
+            ctx.fillText(moveList.split("\n")[ii].split("\\")[jj], 522 + (jj * 115), 67 + (ii * 20));
+        }
+    }
+    // ctx.fillText(moveList, 524, 67);
+
+    // pieces background
+    ctx.fillStyle = "#442200";
+    ctx.fillRect(760, 50, 240, 200);
+    // move list label
+    ctx.beginPath();
+    ctx.fillStyle = "#ffffff";
+    ctx.font = "30px Arial";
+    ctx.fillText("Capture List", 800, 36);
+    // white labels
+    ctx.beginPath();
+    ctx.drawImage(spritesheet, 5 * (640 / 3), 0 * (427 / 2), (640 / 3), (640 / 3), 758, 50, 40, 40);
+    ctx.drawImage(spritesheet, 3 * (640 / 3), 0 * (427 / 2), (640 / 3), (640 / 3), 808, 50, 40, 40);
+    ctx.drawImage(spritesheet, 2 * (640 / 3), 0 * (427 / 2), (640 / 3), (640 / 3), 858, 50, 40, 40);
+    ctx.drawImage(spritesheet, 4 * (640 / 3), 0 * (427 / 2), (640 / 3), (640 / 3), 908, 50, 40, 40);
+    ctx.drawImage(spritesheet, 1 * (640 / 3), 0 * (427 / 2), (640 / 3), (640 / 3), 958, 50, 40, 40);
+    // black labels
+    ctx.beginPath();
+    ctx.drawImage(spritesheet, 5 * (640 / 3), 1 * (427 / 2), (640 / 3), (640 / 3), 758, 150, 40, 40);
+    ctx.drawImage(spritesheet, 3 * (640 / 3), 1 * (427 / 2), (640 / 3), (640 / 3), 808, 150, 40, 40);
+    ctx.drawImage(spritesheet, 2 * (640 / 3), 1 * (427 / 2), (640 / 3), (640 / 3), 858, 150, 40, 40);
+    ctx.drawImage(spritesheet, 4 * (640 / 3), 1 * (427 / 2), (640 / 3), (640 / 3), 908, 150, 40, 40);
+    ctx.drawImage(spritesheet, 1 * (640 / 3), 1 * (427 / 2), (640 / 3), (640 / 3), 958, 150, 40, 40);
+    // white values
+    ctx.beginPath();
+    ctx.fillStyle = "#ffffff";
+    ctx.font = "30px Arial";
+    ctx.fillText(capturedCounts[0], 770, 133);
+    ctx.fillText(capturedCounts[1], 820, 133);
+    ctx.fillText(capturedCounts[2], 870, 133);
+    ctx.fillText(capturedCounts[3], 920, 133);
+    ctx.fillText(capturedCounts[4], 970, 133);
+    // black values
+    ctx.beginPath();
+    ctx.fillStyle = "#ffffff";
+    ctx.font = "30px Arial";
+    ctx.fillText(capturedCounts[5], 770, 236);
+    ctx.fillText(capturedCounts[6], 820, 236);
+    ctx.fillText(capturedCounts[7], 870, 236);
+    ctx.fillText(capturedCounts[8], 920, 236);
+    ctx.fillText(capturedCounts[9], 970, 236);
+
+    // boards
+    for (var i = 0; i < boardLength; i++) {
+        // begin board background
+        ctx.beginPath();
+        ctx.fillStyle = "#884400";
+        ctx.fillRect(20, 20 + (512 * i), 472, 472);
+
+        // turn colour
+        if (turn == COLOUR.WHITE) {
+            ctx.fillStyle = "#ffffff";
         } else {
-            // logged out
+            ctx.fillStyle = "#000000";
         }
-    })
+        ctx.fillRect(27, 27 + (512 * i), 458, 458);
+
+        // finish board background
+        ctx.fillStyle = "#884400";
+        ctx.fillRect(33, 33 + (512 * i), 446, 446);
+
+        // white spaces
+        ctx.beginPath();
+        ctx.fillStyle = "#ffddaa";
+        ctx.fillRect(40, 40 + (512 * i), 432, 432);
+
+        // black spaces
+        for (var j = 0; j < boardLength; j++) {
+            for (var k = 0; k < boardLength; k++) {
+                if ((i + j + k) % 2 == 1) {
+                    // white spaces
+                    ctx.beginPath();
+                    ctx.fillStyle = "#662200";
+                    ctx.fillRect(40 + (54 * j), 40 + (54 * k) + (512 * i), 54, 54);
+                }
+            }
+        }
+
+        // labels
+        if (showLabels) {
+            ctx.beginPath();
+            ctx.fillStyle = "#ffffff";
+            ctx.font = "20px Arial";
+            for (var j = 0; j < boardLength; j++) {
+                ctx.fillText("abcdefgh"[j], 61 + (54 * j), 15 + (512 * i));
+            }
+            for (var j = 0; j < boardLength; j++) {
+                ctx.fillText("87654321"[j], 5, 69 + (54 * j) + (512 * i));
+            }
+            ctx.fillText("αβγδεζηθ"[i], 497, 260 + (512 * i));
+        }
+    }
 }
 
-function initChat(chatName, createorjoin) {
-//    signout();
+function drawBoard() {
+    for (var i = 0; i < boardLength; i++) {
+        for (var j = 0; j < boardLength; j++) {
+            for (var k = 0; k < boardLength; k++) {
+                if (typeBoard[i][j][k] != -1) {
+                    drawPiece(typeBoard[i][j][k], colourBoard[i][j][k], i, j, k);
+                }
+            }
+        }
+    }
+}
 
-    onAuthStateChanged(auth, (user) => {
-        if (user) {
-            if (!siav) {
-                localStorage.setItem("kijeLoggedIn", "true");
-                loggedIn = "true";
-                lsobutton.value = "Sign Out";
-                userEmail = user.email;
-            } else {
-                localStorage.setItem("kijeLoggedIn", "false");
-                loggedIn = "false";
-                userEmail = "";
+function initBoard() {
+    for (var i = 0; i < boardLength; i++) {
+        for (var j = 0; j < boardLength; j++) {
+            // white rook corners
+            if ((i == 0 || i == 7) && (j == 0 || j == 7)) {
+                typeBoard[i][j][0] = PIECE.ROOK;
+                colourBoard[i][j][0] = COLOUR.WHITE;
             }
 
-            chatRef = ref(database, `chats/${chatName}`);
-
-            if (createorjoin == 1) {
-                // create
-                set(chatRef, {
-                    recentMessage: "",
-                    ownerPass: ownerpass
-                });
+            // white bishop corners
+            if ((i == 2 || i == 5) && (j == 2 || j == 5)) {
+                typeBoard[i][j][0] = PIECE.BISHOP;
+                colourBoard[i][j][0] = COLOUR.WHITE;
             }
 
-            // callback will occur whenever chat ref changes
-            onValue(chatRef, (snapshot) => {
-                if (snapshot.exists()) {
-                    if ("recentMessage" in (snapshot.val())) {
-                        // check to make sure it is infact the recentMessage changing (and not the ownerPass for instance)
-                        if (!(rm == snapshot.val()["recentMessage"])) {
-                            chat.innerHTML += "<br><br>" + snapshot.val()["recentMessage"];
-                            if (!focused) {
-                                icon.href = "kijetesantakalu_notif.png";
-                            }
-                            document.getElementById("sendmessage").scrollIntoView();
-                            
-                            rm = snapshot.val()["recentMessage"];
+            // white knight corners
+            if ((i == 1 || i == 6) && (j == 1 || j == 6)) {
+                typeBoard[i][j][0] = PIECE.KNIGHT;
+                colourBoard[i][j][0] = COLOUR.WHITE;
+            }
+
+            // white pawn diagonals
+            if (i == j || i == (7 - j)) {
+                typeBoard[i][j][1] = PIECE.PAWN;
+                colourBoard[i][j][1] = COLOUR.WHITE;
+            }
+
+            // white pawn sidepairs
+            if ((i == 3 || i == 4) && (j == 0 || j == 7)) {
+                typeBoard[i][j][1] = PIECE.PAWN;
+                colourBoard[i][j][1] = COLOUR.WHITE;
+            }
+            if ((i == 0 || i == 7) && (j == 3 || j == 4)) {
+                typeBoard[i][j][1] = PIECE.PAWN;
+                colourBoard[i][j][1] = COLOUR.WHITE;
+            }
+
+            // white pawn squares
+            if ((i == 1 || i == 2 || i == 5 || i == 6) && (j == 3 || j == 4)) {
+                typeBoard[i][j][2] = PIECE.PAWN;
+                colourBoard[i][j][2] = COLOUR.WHITE;
+            }
+            if ((i == 3 || i == 4) && (j == 1 || j == 2 || j == 5 || j == 6)) {
+                typeBoard[i][j][2] = PIECE.PAWN;
+                colourBoard[i][j][2] = COLOUR.WHITE;
+            }
+
+            // black rook corners
+            if ((i == 0 || i == 7) && (j == 0 || j == 7)) {
+                typeBoard[i][j][7] = PIECE.ROOK;
+                colourBoard[i][j][7] = COLOUR.BLACK;
+            }
+
+            // black bishop corners
+            if ((i == 2 || i == 5) && (j == 2 || j == 5)) {
+                typeBoard[i][j][7] = PIECE.BISHOP;
+                colourBoard[i][j][7] = COLOUR.BLACK;
+            }
+
+            // black knight corners
+            if ((i == 1 || i == 6) && (j == 1 || j == 6)) {
+                typeBoard[i][j][7] = PIECE.KNIGHT;
+                colourBoard[i][j][7] = COLOUR.BLACK;
+            }
+
+            // black pawn diagonals
+            if (i == j || i == (7 - j)) {
+                typeBoard[i][j][6] = PIECE.PAWN;
+                colourBoard[i][j][6] = COLOUR.BLACK;
+            }
+
+            // black pawn sidepairs
+            if ((i == 3 || i == 4) && (j == 0 || j == 7)) {
+                typeBoard[i][j][6] = PIECE.PAWN;
+                colourBoard[i][j][6] = COLOUR.BLACK;
+            }
+            if ((i == 0 || i == 7) && (j == 3 || j == 4)) {
+                typeBoard[i][j][6] = PIECE.PAWN;
+                colourBoard[i][j][6] = COLOUR.BLACK;
+            }
+
+            // black pawn squares
+            if ((i == 1 || i == 2 || i == 5 || i == 6) && (j == 3 || j == 4)) {
+                typeBoard[i][j][5] = PIECE.PAWN;
+                colourBoard[i][j][5] = COLOUR.BLACK;
+            }
+            if ((i == 3 || i == 4) && (j == 1 || j == 2 || j == 5 || j == 6)) {
+                typeBoard[i][j][5] = PIECE.PAWN;
+                colourBoard[i][j][5] = COLOUR.BLACK;
+            }
+        }
+    }
+
+    // white kings
+    typeBoard[3][3][0] = PIECE.KING;
+    colourBoard[3][3][0] = COLOUR.WHITE;
+
+    typeBoard[4][4][0] = PIECE.KING;
+    colourBoard[4][4][0] = COLOUR.WHITE;
+
+    // white queens
+    typeBoard[3][4][0] = PIECE.QUEEN;
+    colourBoard[3][4][0] = COLOUR.WHITE;
+
+    typeBoard[4][3][0] = PIECE.QUEEN;
+    colourBoard[4][3][0] = COLOUR.WHITE;
+
+    // black kings
+    typeBoard[3][3][7] = PIECE.KING;
+    colourBoard[3][3][7] = COLOUR.BLACK;
+
+    typeBoard[4][4][7] = PIECE.KING;
+    colourBoard[4][4][7] = COLOUR.BLACK;
+
+    // black queens
+    typeBoard[3][4][7] = PIECE.QUEEN;
+    colourBoard[3][4][7] = COLOUR.BLACK;
+
+    typeBoard[4][3][7] = PIECE.QUEEN;
+    colourBoard[4][3][7] = COLOUR.BLACK;
+}
+
+function drawPiece(type, colour, x, y, z) {
+    ctx.beginPath();
+    if (colour == turn && mouseX > (x * 54) + 40 && mouseX < (x * 54) + 94 && mouseY > (y * 54) + (z * 512) + 40 && mouseY < (y * 54) + (z * 512) + 94) {
+        ctx.drawImage(spritesheet, type * (640 / 3), colour * (427 / 2), (640 / 3), (640 / 3), (x * 54) + 36, (y * 54) + (z * 512) + 36, 62, 62);
+        if (mouseDown && mouseButton == CLICK.LEFT) {
+            selected.set(x, y, z);
+            calculateMoveToList();
+        }
+    } else {
+        if (colour != turn && mouseX > (x * 54) + 40 && mouseX < (x * 54) + 94 && mouseY > (y * 54) + (z * 512) + 40 && mouseY < (y * 54) + (z * 512) + 94) {
+            if (mouseDown && mouseButton == CLICK.RIGHT) {
+                turn = (turn + 1) % 2;
+                selected.set(x, y, z);
+                calculateMoveToList();
+                moveToListToThreatList();
+                turn = (turn + 1) % 2;
+            }
+            ctx.drawImage(spritesheet, type * (640 / 3), colour * (427 / 2), (640 / 3), (640 / 3), (x * 54) + 36, (y * 54) + (z * 512) + 36, 62, 62);
+        } else {
+            ctx.drawImage(spritesheet, type * (640 / 3), colour * (427 / 2), (640 / 3), (640 / 3), (x * 54) + 40, (y * 54) + (z * 512) + 40, 54, 54);
+        }
+    }
+}
+
+function calculateMoveToList() {
+    moveToList = [];
+    threatList = [];
+    switch (typeBoard[selected.x][selected.y][selected.z]) {
+        case (PIECE.PAWN): {
+            calculatePawnMove();
+            break;
+        }
+        case (PIECE.KNIGHT): {
+            calculateKnightMove();
+            break;
+        }
+        case (PIECE.ROOK): {
+            calculateRookMove();
+            break;
+        }
+        case (PIECE.BISHOP): {
+            calculateBishopMove();
+            break;
+        }
+        case (PIECE.QUEEN): {
+            calculateQueenMove();
+            break;
+        }
+        case (PIECE.KING): {
+            calculateKingMove();
+            break;
+        }
+        default: {
+            break;
+        }
+    }
+}
+
+var checkList = [];
+function checkCheck() {
+    checkList = [];
+    checkBoard = Array(boardLength).fill().map(() => Array(boardLength).fill().map(() => Array(boardLength).fill(0)));
+    turn = (turn + 1) % 2;
+    findAllThreatened();
+    turn = (turn + 1) % 2;
+    findAllThreatened();
+}
+
+function findAllThreatened() {
+    for (var p = 0; p < boardLength; p++) {
+        for (var q = 0; q < boardLength; q++) {
+            for (var r = 0; r < boardLength; r++) {
+                if (colourBoard[p][q][r] == turn) {
+                    selected.set(p, q, r);
+                    switch (typeBoard[selected.x][selected.y][selected.z]) {
+                        case (PIECE.PAWN): {
+                            calculatePawnMove();
+                            break;
+                        }
+                        case (PIECE.KNIGHT): {
+                            calculateKnightMove();
+                            break;
+                        }
+                        case (PIECE.ROOK): {
+                            calculateRookMove();
+                            break;
+                        }
+                        case (PIECE.BISHOP): {
+                            calculateBishopMove();
+                            break;
+                        }
+                        case (PIECE.QUEEN): {
+                            calculateQueenMove();
+                            break;
+                        }
+                        case (PIECE.KING): {
+                            calculateKingMove();
+                            break;
+                        }
+                        default: {
+                            break;
                         }
                     }
-                } else {
-                    chatValid = false;
                 }
-                // for (var key in (snapshot.val() || {})) {
-                //     gamePlayers[key].name = snapshot.val()[key].name;
-                //     gamePlayers[key].x = snapshot.val()[key].x;
-                //     gamePlayers[key].y = snapshot.val()[key].y;
-                // }
-            });
-        
-            // callback will occur whenever (relative to the client) a new player joins
-            // (this means even if people were playing before a new client joins, to the client the other people will have just joined and this function will fire for all of them)
-            onChildAdded(chatRef, (snapshot) => {
-                // var addedPlayer = snapshot.val();
-        
-                // if (addedPlayer.id === playerID) {
-                //     gamePlayer = new Player(addedPlayer.name, addedPlayer.x, addedPlayer.y, true);
-                //     gamePlayers[addedPlayer.id] = gamePlayer;
-                // } else {
-                //     var p = new Player(addedPlayer.name, addedPlayer.x, addedPlayer.y, false);
-                //     gamePlayers[addedPlayer.id] = p;
-                // }
-                
-            });
-        /*
-            onChildRemoved(allRef, (snapshot) => {
-                if (snapshot.val() == chatName) {
-                    //chatValid = false;
-                }
-                // delete(gamePlayers[snapshot.val().id]);
-            })*/
-        } else {
-            // logged out
-        }
-    });
-/*
-    getRedirectResult(auth).then((result) => {
-        // This gives you a Google Access Token. You can use it to access Google APIs.
-        const credential = GoogleAuthProvider.credentialFromResult(result);
-        const token = credential.accessToken;
-
-        // The signed-in user info.
-        const user = result.user;
-    }).catch((error) => {
-        // Handle Errors here.
-        const errorCode = error.code;
-        const errorMessage = error.message;
-        // The email of the user's account used.
-        //const email = error.customData.email;
-        // The AuthCredential type that was used.
-        const credential = GoogleAuthProvider.credentialFromError(error);
-        // ...
-    })*/
-
-/*    signInAnonymously(auth).catch((error) => {
-        const errorCode = error.code;
-        const errorMessage = error.message;
-        
-        console.log(errorCode, errorMessage);
-    });*/
-}
-
-function sia() {
-    signInAnonymously(auth).catch((error) => {
-        const errorCode = error.code;
-        const errorMessage = error.message;
-        
-        console.log(errorCode, errorMessage);
-    });
-    localStorage.setItem("kijeAnonLoggedIn", "true");
-    siav = true;
-    localStorage.setItem("kijeLoggedIn", "false");
-    loggedIn = "false";
-}
-
-function signout() {
-    signOut(auth).then(() => {
-        // Sign-out successful.
-    }).catch((error) => {
-        // An error happened.
-    });
-}
-
-// theme form handling
-var tcss = document.getElementById("themecss");
-var tsform = document.getElementById("themeselectform");
-var ts = document.getElementById("themeselect");
-tsform.addEventListener("submit", (e) => {
-    e.preventDefault();
-    e.stopImmediatePropagation();
-
-    if (ts.options[ts.selectedIndex].text == "Light Mode") {
-        tcss.href = "theme_light.css";
-        localStorage.setItem("themepreference", "Light Mode");
-    } else if (ts.options[ts.selectedIndex].text == "Dark Mode") {
-        tcss.href = "theme_dark.css";
-        localStorage.setItem("themepreference", "Dark Mode");
-    }
-});
-
-// get client variable for preferred theme
-if (!(localStorage.getItem("themepreference") == null)) {
-    if (localStorage.getItem("themepreference") == "Light Mode") {
-        tcss.href = "theme_light.css";
-        ts.value = "1";
-    } else if (localStorage.getItem("themepreference") == "Dark Mode") {
-        tcss.href = "theme_dark.css";
-        ts.value = "0";
-    }
-}
-
-// font form handling
-var fcss = document.getElementById("fontcss");
-var fsform = document.getElementById("fontselectform");
-var fs = document.getElementById("fontselect");
-fsform.addEventListener("submit", (e) => {
-    e.preventDefault();
-    e.stopImmediatePropagation();
-
-    switch(fs.options[fs.selectedIndex].text) {
-        case "Arial": {
-            fcss.href = "font_arial.css";
-            localStorage.setItem("fontpreference", "Arial");
-            break;
-        }
-        case "Times New Roman": {
-            fcss.href = "font_tnr.css";
-            localStorage.setItem("fontpreference", "Times New Roman");
-            break;
-        }
-        case "Comic Sans MS": {
-            fcss.href = "font_csms.css";
-            localStorage.setItem("fontpreference", "Comic Sans MS");
-            break;
-        }
-        case "Comfortaa": {
-            fcss.href = "font_comf.css";
-            localStorage.setItem("fontpreference", "Comfortaa");
-            break;
-        }
-        case "Wire One": {
-            fcss.href = "font_wo.css";
-            localStorage.setItem("fontpreference", "Wire One");
-            break;
-        }
-        case "Lobster": {fontselectform
-            fcss.href = "font_lb.css";
-            localStorage.setItem("fontpreference", "Lobster");
-            break;
-        }
-        case "Courier New": {
-            fcss.href = "font_cn.css";
-            localStorage.setItem("fontpreference", "Courier New");
-            break;
-        }
-        case "Dosis": {
-            fcss.href = "font_dss.css";
-            localStorage.setItem("fontpreference", "Dosis");
-            break;
-        }
-        case "Bad Script": {
-            fcss.href = "font_bs.css";
-            localStorage.setItem("fontpreference", "Bad Script");
-            break;
-        }
-        default: {
-            break;
+            }
         }
     }
-});
+    for (var p = 0; p < moveToList.length; p++) {
+        if (typeBoard[moveToList[p].x][moveToList[p].y][moveToList[p].z] == PIECE.KING && colourBoard[moveToList[p].x][moveToList[p].y][moveToList[p].z] != turn) {
+            checkBoard[moveToList[p].x][moveToList[p].y][moveToList[p].z] = 1;
+        }
+    }
+    moveToList = [];
+}
 
-var xtraform = document.getElementById("xtrabuttonform");
-var xtrabutton = document.getElementById("xtrabutton");
-var xtraexplain = document.getElementById("xtraexplain");
-xtraform.addEventListener("submit", (e) => {
-    e.preventDefault();
-    e.stopImmediatePropagation();
-
-    if (xtrabutton.value == "Show extra") {
-        xtrabutton.value = "Hide extra";
-        xtraexplain.innerHTML = '<u>Text formatting</u><br><b>message</b> = ^^message^^<br><i>message</i> = ^message^<br><u>message</u> = ``message``<br><i>message</i> = `message`<br><a style = "color: #0066cc;", href = "">message</a> = ~~message~~<br><del>message</del> = ~message~<br><br>^ = \\^<br>` = \\`<br>~ = \\~<br>\\ = \\\\<br><br><a style = "color: #0066cc;", href = "https://forms.gle/nDE9u9NatLsR8TPF6", target = "_blank">Suggestion Form</a>';
+function calculatePawnMove() {
+    if (colourBoard[selected.x][selected.y][selected.z] == COLOUR.WHITE) {
+        // pawn forward
+        if (typeBoard[selected.x][selected.y][selected.z + 1] == PIECE.BLANK) {
+            moveToList.push(new BoardPos(selected.x, selected.y, selected.z + 1));
+            if (selected.z == 1 && typeBoard[selected.x][selected.y][selected.z + 2] == PIECE.BLANK) {
+                moveToList.push(new BoardPos(selected.x, selected.y, selected.z + 2));
+            }
+        }
+        // pawn capture
+        if (!(selected.x == 7 || selected.z == 7)) {
+            if ((typeBoard[selected.x + 1][selected.y][selected.z + 1] != PIECE.BLANK) && (colourBoard[selected.x + 1][selected.y][selected.z + 1] == COLOUR.BLACK)) {
+                moveToList.push(new BoardPos(selected.x + 1, selected.y, selected.z + 1));
+            }
+        }
+        if (!(selected.x == 0 || selected.z == 7)) {
+            if ((typeBoard[selected.x - 1][selected.y][selected.z + 1] != PIECE.BLANK) && (colourBoard[selected.x - 1][selected.y][selected.z + 1] == COLOUR.BLACK)) {
+                moveToList.push(new BoardPos(selected.x - 1, selected.y, selected.z + 1));
+            }
+        }
+        if (!(selected.y == 7 || selected.z == 7)) {
+            if ((typeBoard[selected.x][selected.y + 1][selected.z + 1] != PIECE.BLANK) && (colourBoard[selected.x][selected.y + 1][selected.z + 1] == COLOUR.BLACK)) {
+                moveToList.push(new BoardPos(selected.x, selected.y + 1, selected.z + 1));
+            }
+        }
+        if (!(selected.y == 0 || selected.z == 7)) {
+            if ((typeBoard[selected.x][selected.y - 1][selected.z + 1] != PIECE.BLANK) && (colourBoard[selected.x][selected.y - 1][selected.z + 1] == COLOUR.BLACK)) {
+                moveToList.push(new BoardPos(selected.x, selected.y - 1, selected.z + 1));
+            }
+        }
     } else {
-        xtrabutton.value = "Show extra";
-        xtraexplain.innerHTML = '';
-    }
-
-    xtraform.reset();
-})
-
-// get client variable for preferred font
-if (!(localStorage.getItem("fontpreference") == null)) {
-    switch(localStorage.getItem("fontpreference")) {
-        case "Arial": {
-            fcss.href = "font_arial.css";
-            fs.value = "0";
-            break;
+        // pawn forward
+        if (typeBoard[selected.x][selected.y][selected.z - 1] == PIECE.BLANK) {
+            moveToList.push(new BoardPos(selected.x, selected.y, selected.z - 1));
+            if (selected.z == 6 && typeBoard[selected.x][selected.y][selected.z - 2] == PIECE.BLANK) {
+                moveToList.push(new BoardPos(selected.x, selected.y, selected.z - 2));
+            }
         }
-        case "Times New Roman": {
-            fcss.href = "font_tnr.css";
-            fs.value = "1";
-            break;
+        // pawn capture
+        if (!(selected.x == 7 || selected.z == 0)) {
+            if ((typeBoard[selected.x + 1][selected.y][selected.z - 1] != PIECE.BLANK) && (colourBoard[selected.x + 1][selected.y][selected.z - 1] == COLOUR.WHITE)) {
+                moveToList.push(new BoardPos(selected.x + 1, selected.y, selected.z - 1));
+            }
         }
-        case "Comic Sans MS": {
-            fcss.href = "font_csms.css";
-            fs.value = "2";
-            break;
+        if (!(selected.x == 0 || selected.z == 0)) {
+            if ((typeBoard[selected.x - 1][selected.y][selected.z - 1] != PIECE.BLANK) && (colourBoard[selected.x - 1][selected.y][selected.z - 1] == COLOUR.WHITE)) {
+                moveToList.push(new BoardPos(selected.x - 1, selected.y, selected.z - 1));
+            }
         }
-        case "Comfortaa": {
-            fcss.href = "font_comf.css";
-            fs.value = "3";
-            break;
+        if (!(selected.y == 7 || selected.z == 0)) {
+            if ((typeBoard[selected.x][selected.y + 1][selected.z - 1] != PIECE.BLANK) && (colourBoard[selected.x][selected.y + 1][selected.z - 1] == COLOUR.WHITE)) {
+                moveToList.push(new BoardPos(selected.x, selected.y + 1, selected.z - 1));
+            }
         }
-        case "Wire One": {
-            fcss.href = "font_wo.css";
-            fs.value = "4";
-            break;
-        }
-        case "Lobster": {
-            fcss.href = "font_lb.css";
-            fs.value = "5";
-            break;
-        }
-        case "Courier New": {
-            fcss.href = "font_cn.css";
-            fs.value = "6";
-            break;
-        }
-        case "Dosis": {
-            fcss.href = "font_dss.css";
-            fs.value = "7";
-            break;
-        }
-        case "Bad Script": {
-            fcss.href = "font_bs.css";
-            fs.value = "8";
-        }
-        default: {
-            break;
+        if (!(selected.y == 0 || selected.z == 0)) {
+            if ((typeBoard[selected.x][selected.y - 1][selected.z - 1] != PIECE.BLANK) && (colourBoard[selected.x][selected.y - 1][selected.z - 1] == COLOUR.WHITE)) {
+                moveToList.push(new BoardPos(selected.x, selected.y - 1, selected.z - 1));
+            }
         }
     }
 }
 
-window.onfocus = function () {
-    focused = true;
-    setkijetesantakalu();
-};
-
-window.onblur = function () {
-    focused = false;
-};
-
-function setkijetesantakalu() {
-    // set icon based on browser theme
-    icon.href = "kijetesantakalu_black.png";
-    if (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches) {
-        icon.href = "kijetesantakalu_white.png";
+function calculateKnightMove() {
+    // xy shift 1 z shift 2
+    if (selected.x + 1 <= 7 && selected.y + 1 <= 7 && selected.z + 2 <= 7) {
+        if (typeBoard[selected.x + 1][selected.y + 1][selected.z + 2] == PIECE.BLANK || colourBoard[selected.x + 1][selected.y + 1][selected.z + 2] != turn) {
+            moveToList.push(new BoardPos(selected.x + 1, selected.y + 1, selected.z + 2));
+        }
+    }
+    if (selected.x - 1 >= 0 && selected.y + 1 <= 7 && selected.z + 2 <= 7) {
+        if (typeBoard[selected.x - 1][selected.y + 1][selected.z + 2] == PIECE.BLANK || colourBoard[selected.x - 1][selected.y + 1][selected.z + 2] != turn) {
+            moveToList.push(new BoardPos(selected.x - 1, selected.y + 1, selected.z + 2));
+        }
+    }
+    if (selected.x + 1 <= 7 && selected.y - 1 >= 0 && selected.z + 2 <= 7) {
+        if (typeBoard[selected.x + 1][selected.y - 1][selected.z + 2] == PIECE.BLANK || colourBoard[selected.x + 1][selected.y - 1][selected.z + 2] != turn) {
+            moveToList.push(new BoardPos(selected.x + 1, selected.y - 1, selected.z + 2));
+        }
+    }
+    if (selected.x - 1 >= 0 && selected.y - 1 >= 0 && selected.z + 2 <= 7) {
+        if (typeBoard[selected.x - 1][selected.y - 1][selected.z + 2] == PIECE.BLANK || colourBoard[selected.x - 1][selected.y - 1][selected.z + 2] != turn) {
+            moveToList.push(new BoardPos(selected.x - 1, selected.y - 1, selected.z + 2));
+        }
+    }
+    if (selected.x + 1 <= 7 && selected.y + 1 <= 7 && selected.z - 2 >= 0) {
+        if (typeBoard[selected.x + 1][selected.y + 1][selected.z - 2] == PIECE.BLANK || colourBoard[selected.x + 1][selected.y + 1][selected.z - 2] != turn) {
+            moveToList.push(new BoardPos(selected.x + 1, selected.y + 1, selected.z - 2));
+        }
+    }
+    if (selected.x - 1 >= 0 && selected.y + 1 <= 7 && selected.z - 2 >= 0) {
+        if (typeBoard[selected.x - 1][selected.y + 1][selected.z - 2] == PIECE.BLANK || colourBoard[selected.x - 1][selected.y + 1][selected.z - 2] != turn) {
+            moveToList.push(new BoardPos(selected.x - 1, selected.y + 1, selected.z - 2));
+        }
+    }
+    if (selected.x + 1 <= 7 && selected.y - 1 >= 0 && selected.z - 2 >= 0) {
+        if (typeBoard[selected.x + 1][selected.y - 1][selected.z - 2] == PIECE.BLANK || colourBoard[selected.x + 1][selected.y - 1][selected.z - 2] != turn) {
+            moveToList.push(new BoardPos(selected.x + 1, selected.y - 1, selected.z - 2));
+        }
+    }
+    if (selected.x - 1 >= 0 && selected.y - 1 >= 0 && selected.z - 2 >= 0) {
+        if (typeBoard[selected.x - 1][selected.y - 1][selected.z - 2] == PIECE.BLANK || colourBoard[selected.x - 1][selected.y - 1][selected.z - 2] != turn) {
+            moveToList.push(new BoardPos(selected.x - 1, selected.y - 1, selected.z - 2));
+        }
+    }
+    // yz shift 1 x shift 2
+    if (selected.x + 2 <= 7 && selected.y + 1 <= 7 && selected.z + 1 <= 7) {
+        if (typeBoard[selected.x + 2][selected.y + 1][selected.z + 1] == PIECE.BLANK || colourBoard[selected.x + 2][selected.y + 1][selected.z + 1] != turn) {
+            moveToList.push(new BoardPos(selected.x + 2, selected.y + 1, selected.z + 1));
+        }
+    }
+    if (selected.x + 2 <= 7 && selected.y - 1 >= 0 && selected.z + 1 <= 7) {
+        if (typeBoard[selected.x + 2][selected.y - 1][selected.z + 1] == PIECE.BLANK || colourBoard[selected.x + 2][selected.y - 1][selected.z + 1] != turn) {
+            moveToList.push(new BoardPos(selected.x + 2, selected.y - 1, selected.z + 1));
+        }
+    }
+    if (selected.x + 2 <= 7 && selected.y + 1 <= 7 && selected.z - 1 >= 0) {
+        if (typeBoard[selected.x + 2][selected.y + 1][selected.z - 1] == PIECE.BLANK || colourBoard[selected.x + 2][selected.y + 1][selected.z - 1] != turn) {
+            moveToList.push(new BoardPos(selected.x + 2, selected.y + 1, selected.z - 1));
+        }
+    }
+    if (selected.x + 2 <= 7 && selected.y - 1 >= 0 && selected.z - 1 >= 0) {
+        if (typeBoard[selected.x + 2][selected.y - 1][selected.z - 1] == PIECE.BLANK || colourBoard[selected.x + 2][selected.y - 1][selected.z - 1] != turn) {
+            moveToList.push(new BoardPos(selected.x + 2, selected.y - 1, selected.z - 1));
+        }
+    }
+    if (selected.x - 2 >= 0 && selected.y + 1 <= 7 && selected.z + 1 <= 7) {
+        if (typeBoard[selected.x - 2][selected.y + 1][selected.z + 1] == PIECE.BLANK || colourBoard[selected.x - 2][selected.y + 1][selected.z + 1] != turn) {
+            moveToList.push(new BoardPos(selected.x - 2, selected.y + 1, selected.z + 1));
+        }
+    }
+    if (selected.x - 2 >= 0 && selected.y - 1 >= 0 && selected.z + 1 <= 7) {
+        if (typeBoard[selected.x - 2][selected.y - 1][selected.z + 1] == PIECE.BLANK || colourBoard[selected.x - 2][selected.y - 1][selected.z + 1] != turn) {
+            moveToList.push(new BoardPos(selected.x - 2, selected.y - 1, selected.z + 1));
+        }
+    }
+    if (selected.x - 2 >= 0 && selected.y + 1 <= 7 && selected.z - 1 >= 0) {
+        if (typeBoard[selected.x - 2][selected.y + 1][selected.z - 1] == PIECE.BLANK || colourBoard[selected.x - 2][selected.y + 1][selected.z - 1] != turn) {
+            moveToList.push(new BoardPos(selected.x - 2, selected.y + 1, selected.z - 1));
+        }
+    }
+    if (selected.x - 2 >= 0 && selected.y - 1 >= 0 && selected.z - 1 >= 0) {
+        if (typeBoard[selected.x - 2][selected.y - 1][selected.z - 1] == PIECE.BLANK || colourBoard[selected.x - 2][selected.y - 1][selected.z - 1] != turn) {
+            moveToList.push(new BoardPos(selected.x - 2, selected.y - 1, selected.z - 1));
+        }
+    }
+    // xz shift 1 y shift 2
+    if (selected.x + 1 <= 7 && selected.y + 2 <= 7 && selected.z + 1 <= 7) {
+        if (typeBoard[selected.x + 1][selected.y + 2][selected.z + 1] == PIECE.BLANK || colourBoard[selected.x + 1][selected.y + 2][selected.z + 1] != turn) {
+            moveToList.push(new BoardPos(selected.x + 1, selected.y + 2, selected.z + 1));
+        }
+    }
+    if (selected.x - 1 >= 0 && selected.y + 2 <= 7 && selected.z + 1 <= 7) {
+        if (typeBoard[selected.x - 1][selected.y + 2][selected.z + 1] == PIECE.BLANK || colourBoard[selected.x - 1][selected.y + 2][selected.z + 1] != turn) {
+            moveToList.push(new BoardPos(selected.x - 1, selected.y + 2, selected.z + 1));
+        }
+    }
+    if (selected.x + 1 <= 7 && selected.y + 2 <= 7 && selected.z - 1 >= 0) {
+        if (typeBoard[selected.x + 1][selected.y + 2][selected.z - 1] == PIECE.BLANK || colourBoard[selected.x + 1][selected.y + 2][selected.z - 1] != turn) {
+            moveToList.push(new BoardPos(selected.x + 1, selected.y + 2, selected.z - 1));
+        }
+    }
+    if (selected.x - 1 >= 0 && selected.y + 2 <= 7 && selected.z - 1 >= 0) {
+        if (typeBoard[selected.x - 1][selected.y + 2][selected.z - 1] == PIECE.BLANK || colourBoard[selected.x - 1][selected.y + 2][selected.z - 1] != turn) {
+            moveToList.push(new BoardPos(selected.x - 1, selected.y + 2, selected.z - 1));
+        }
+    }
+    if (selected.x + 1 <= 7 && selected.y - 2 >= 0 && selected.z + 1 <= 7) {
+        if (typeBoard[selected.x + 1][selected.y - 2][selected.z + 1] == PIECE.BLANK || colourBoard[selected.x + 1][selected.y - 2][selected.z + 1] != turn) {
+            moveToList.push(new BoardPos(selected.x + 1, selected.y - 2, selected.z + 1));
+        }
+    }
+    if (selected.x - 1 >= 0 && selected.y - 2 >= 0 && selected.z + 1 <= 7) {
+        if (typeBoard[selected.x - 1][selected.y - 2][selected.z + 1] == PIECE.BLANK || colourBoard[selected.x - 1][selected.y - 2][selected.z + 1] != turn) {
+            moveToList.push(new BoardPos(selected.x - 1, selected.y - 2, selected.z + 1));
+        }
+    }
+    if (selected.x + 1 <= 7 && selected.y - 2 >= 0 && selected.z - 1 >= 0) {
+        if (typeBoard[selected.x + 1][selected.y - 2][selected.z - 1] == PIECE.BLANK || colourBoard[selected.x + 1][selected.y - 2][selected.z - 1] != turn) {
+            moveToList.push(new BoardPos(selected.x + 1, selected.y - 2, selected.z - 1));
+        }
+    }
+    if (selected.x - 1 >= 0 && selected.y - 2 >= 0 && selected.z - 1 >= 0) {
+        if (typeBoard[selected.x - 1][selected.y - 2][selected.z - 1] == PIECE.BLANK || colourBoard[selected.x - 1][selected.y - 2][selected.z - 1] != turn) {
+            moveToList.push(new BoardPos(selected.x - 1, selected.y - 2, selected.z - 1));
+        }
     }
 }
 
-function sanitise(dirty) {
-    return dirty.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&apos;');
-}
-
-var img;
-var imgw;
-var imgh;
-
-var urlRegex =/(\b(https?|ftp|file):\/\/[-A-Z0-9+&@#\/%?=~_|!:,.;]*[-A-Z0-9+&@#\/%=~_|])/ig;
-var imgRegex = /(~~[^~]+~~)+/g;
-function linkify(text) {
-    return text.replace(imgRegex, function(url) {
-        return '<a style = "color: #0066cc;", href ="' + url.slice(2, -2) + '">' + url.slice(2, -2) + '</a><br style = "display:none"><img src = "' + url.slice(2, -2) + '", style = "display:none", height = "400px", onload="showImg(this)">';/*
-        var temp;
-        temp = checkImg(url.slice(-1, 1));
-        sleep(500);
-        console.log(temp);
-        .then((result) => {
-            if (result) {
-                temp = '<img src="' + url.slice(1, -1) + '">';
+function calculateRookMove() {
+    // x+
+    for (var l = 1; l < boardLength; l++) {
+        if ((selected.x + l) <= 7) {
+            if (typeBoard[selected.x + l][selected.y][selected.z] == PIECE.BLANK) {
+                moveToList.push(new BoardPos(selected.x + l, selected.y, selected.z));
             } else {
-                temp = '';
+                if (colourBoard[selected.x + l][selected.y][selected.z] != turn) {
+                    moveToList.push(new BoardPos(selected.x + l, selected.y, selected.z));
+                } else {
+                    // nothing
+                }
+                break;
             }
-        });
-        sleep(500);
-        return '';*/
-    });/*
-    return text.replace(urlRegex, function(url) {
-        if (url.match(/\.(jpeg|jpg|svg|webp|tif|heic|gif|png)$/) == null) {
-            // sending link
-            return '<a style = "color: #0066cc;", href ="' + url + '">' + url + '</a>';
-        } else {
-            // sending image
-            img = new Image();
-            img.src = url;
-            imgw = img.width;
-            imgh = img.height;
-            // height cap (480)
-            if (img.height > 480) {
-                imgw = Math.round(imgw * 480 / img.height);
-                imgh = 480;
-            }
-            return '<img src="' + url + '", width = "' + imgw + 'px", height = "' + imgh + 'px">';
         }
-    });*/
+    }
+    // x-
+    for (var l = -1; l > -boardLength; l--) {
+        if ((selected.x + l) >= 0) {
+            if (typeBoard[selected.x + l][selected.y][selected.z] == PIECE.BLANK) {
+                moveToList.push(new BoardPos(selected.x + l, selected.y, selected.z));
+            } else {
+                if (colourBoard[selected.x + l][selected.y][selected.z] != turn) {
+                    moveToList.push(new BoardPos(selected.x + l, selected.y, selected.z));
+                } else {
+                    // nothing
+                }
+                break;
+            }
+        }
+    }
+    // y+
+    for (var l = 1; l < boardLength; l++) {
+        if ((selected.y + l) <= 7) {
+            if (typeBoard[selected.x][selected.y + l][selected.z] == PIECE.BLANK) {
+                moveToList.push(new BoardPos(selected.x, selected.y + l, selected.z));
+            } else {
+                if (colourBoard[selected.x][selected.y + l][selected.z] != turn) {
+                    moveToList.push(new BoardPos(selected.x, selected.y + l, selected.z));
+                } else {
+                    // nothing
+                }
+                break;
+            }
+        }
+    }
+    // y-
+    for (var l = -1; l > -boardLength; l--) {
+        if ((selected.y + l) >= 0) {
+            if (typeBoard[selected.x][selected.y + l][selected.z] == PIECE.BLANK) {
+                moveToList.push(new BoardPos(selected.x, selected.y + l, selected.z));
+            } else {
+                if (colourBoard[selected.x][selected.y + l][selected.z] != turn) {
+                    moveToList.push(new BoardPos(selected.x, selected.y + l, selected.z));
+                } else {
+                    // nothing
+                }
+                break;
+            }
+        }
+    }
+    // z+
+    for (var l = 1; l < boardLength; l++) {
+        if ((selected.z + l) <= 7) {
+            if (typeBoard[selected.x][selected.y][selected.z + l] == PIECE.BLANK) {
+                moveToList.push(new BoardPos(selected.x, selected.y, selected.z + l));
+            } else {
+                if (colourBoard[selected.x][selected.y][selected.z + l] != turn) {
+                    moveToList.push(new BoardPos(selected.x, selected.y, selected.z + l));
+                } else {
+                    // nothing
+                }
+                break;
+            }
+        }
+    }
+    // z-
+    for (var l = -1; l > -boardLength; l--) {
+        if ((selected.z + l) >= 0) {
+            if (typeBoard[selected.x][selected.y][selected.z + l] == PIECE.BLANK) {
+                moveToList.push(new BoardPos(selected.x, selected.y, selected.z + l));
+            } else {
+                if (colourBoard[selected.x][selected.y][selected.z + l] != turn) {
+                    moveToList.push(new BoardPos(selected.x, selected.y, selected.z + l));
+                } else {
+                    // nothing
+                }
+                break;
+            }
+        }
+    }
 }
 
-function checkImg(url) {
-    img = new Image();
-    img.src = url;
-    return new Promise((resolve) => {
-        img.onload = () => resolve(true);
-        img.onerror = () => resolve(false);
-    });
+function calculateBishopMove() {
+    // xy movement
+    // x+ y+
+    for (var l = 1; l < boardLength; l++) {
+        if (((selected.x + l) <= 7) && ((selected.y + l) <= 7)) {
+            if (typeBoard[selected.x + l][selected.y + l][selected.z] == PIECE.BLANK) {
+                moveToList.push(new BoardPos(selected.x + l, selected.y + l, selected.z));
+            } else {
+                if (colourBoard[selected.x + l][selected.y + l][selected.z] != turn) {
+                    moveToList.push(new BoardPos(selected.x + l, selected.y + l, selected.z));
+                } else {
+                    // nothing
+                }
+                break;
+            }
+        }
+    }
+    // x+ y-
+    for (var l = 1; l < boardLength; l++) {
+        if (((selected.x + l) <= 7) && ((selected.y - l) >= 0)) {
+            if (typeBoard[selected.x + l][selected.y - l][selected.z] == PIECE.BLANK) {
+                moveToList.push(new BoardPos(selected.x + l, selected.y - l, selected.z));
+            } else {
+                if (colourBoard[selected.x + l][selected.y - l][selected.z] != turn) {
+                    moveToList.push(new BoardPos(selected.x + l, selected.y - l, selected.z));
+                } else {
+                    // nothing
+                }
+                break;
+            }
+        }
+    }
+    // x- y+
+    for (var l = 1; l < boardLength; l++) {
+        if (((selected.x - l) >= 0) && ((selected.y + l) <= 7)) {
+            if (typeBoard[selected.x - l][selected.y + l][selected.z] == PIECE.BLANK) {
+                moveToList.push(new BoardPos(selected.x - l, selected.y + l, selected.z));
+            } else {
+                if (colourBoard[selected.x - l][selected.y + l][selected.z] != turn) {
+                    moveToList.push(new BoardPos(selected.x - l, selected.y + l, selected.z));
+                } else {
+                    // nothing
+                }
+                break;
+            }
+        }
+    }
+    // x- y-
+    for (var l = 1; l < boardLength; l++) {
+        if (((selected.x - l) >= 0) && ((selected.y - l) >= 0)) {
+            if (typeBoard[selected.x - l][selected.y - l][selected.z] == PIECE.BLANK) {
+                moveToList.push(new BoardPos(selected.x - l, selected.y - l, selected.z));
+            } else {
+                if (colourBoard[selected.x - l][selected.y - l][selected.z] != turn) {
+                    moveToList.push(new BoardPos(selected.x - l, selected.y - l, selected.z));
+                } else {
+                    // nothing
+                }
+                break;
+            }
+        }
+    }
+    // xz movement
+    // x+ z+
+    for (var l = 1; l < boardLength; l++) {
+        if (((selected.x + l) <= 7) && ((selected.z + l) <= 7)) {
+            if (typeBoard[selected.x + l][selected.y][selected.z + l] == PIECE.BLANK) {
+                moveToList.push(new BoardPos(selected.x + l, selected.y, selected.z + l));
+            } else {
+                if (colourBoard[selected.x + l][selected.y][selected.z + l] != turn) {
+                    moveToList.push(new BoardPos(selected.x + l, selected.y, selected.z + l));
+                } else {
+                    // nothing
+                }
+                break;
+            }
+        }
+    }
+    // x+ z-
+    for (var l = 1; l < boardLength; l++) {
+        if (((selected.x + l) <= 7) && ((selected.z - l) >= 0)) {
+            if (typeBoard[selected.x + l][selected.y][selected.z - l] == PIECE.BLANK) {
+                moveToList.push(new BoardPos(selected.x + l, selected.y, selected.z - l));
+            } else {
+                if (colourBoard[selected.x + l][selected.y][selected.z - l] != turn) {
+                    moveToList.push(new BoardPos(selected.x + l, selected.y, selected.z - l));
+                } else {
+                    // nothing
+                }
+                break;
+            }
+        }
+    }
+    // x- z+
+    for (var l = 1; l < boardLength; l++) {
+        if (((selected.x - l) >= 0) && ((selected.z + l) <= 7)) {
+            if (typeBoard[selected.x - l][selected.y][selected.z + l] == PIECE.BLANK) {
+                moveToList.push(new BoardPos(selected.x - l, selected.y, selected.z + l));
+            } else {
+                if (colourBoard[selected.x - l][selected.y][selected.z + l] != turn) {
+                    moveToList.push(new BoardPos(selected.x - l, selected.y, selected.z + l));
+                } else {
+                    // nothing
+                }
+                break;
+            }
+        }
+    }
+    // x- z-
+    for (var l = 1; l < boardLength; l++) {
+        if (((selected.x - l) >= 0) && ((selected.z - l) >= 0)) {
+            if (typeBoard[selected.x - l][selected.y][selected.z - l] == PIECE.BLANK) {
+                moveToList.push(new BoardPos(selected.x - l, selected.y, selected.z - l));
+            } else {
+                if (colourBoard[selected.x - l][selected.y][selected.z - l] != turn) {
+                    moveToList.push(new BoardPos(selected.x - l, selected.y, selected.z - l));
+                } else {
+                    // nothing
+                }
+                break;
+            }
+        }
+    }
+    // yz movement
+    // y+ z+
+    for (var l = 1; l < boardLength; l++) {
+        if (((selected.y + l) <= 7) && ((selected.z + l) <= 7)) {
+            if (typeBoard[selected.x][selected.y + l][selected.z + l] == PIECE.BLANK) {
+                moveToList.push(new BoardPos(selected.x, selected.y + l, selected.z + l));
+            } else {
+                if (colourBoard[selected.x][selected.y + l][selected.z + l] != turn) {
+                    moveToList.push(new BoardPos(selected.x, selected.y + l, selected.z + l));
+                } else {
+                    // nothing
+                }
+                break;
+            }
+        }
+    }
+    // y+ z-
+    for (var l = 1; l < boardLength; l++) {
+        if (((selected.y + l) <= 7) && ((selected.z - l) >= 0)) {
+            if (typeBoard[selected.x][selected.y + l][selected.z - l] == PIECE.BLANK) {
+                moveToList.push(new BoardPos(selected.x, selected.y + l, selected.z - l));
+            } else {
+                if (colourBoard[selected.x][selected.y + l][selected.z - l] != turn) {
+                    moveToList.push(new BoardPos(selected.x, selected.y + l, selected.z - l));
+                } else {
+                    // nothing
+                }
+                break;
+            }
+        }
+    }
+    // y- z+
+    for (var l = 1; l < boardLength; l++) {
+        if (((selected.y - l) >= 0) && ((selected.z + l) <= 7)) {
+            if (typeBoard[selected.x][selected.y - l][selected.z + l] == PIECE.BLANK) {
+                moveToList.push(new BoardPos(selected.x, selected.y - l, selected.z + l));
+            } else {
+                if (colourBoard[selected.x][selected.y - l][selected.z + l] != turn) {
+                    moveToList.push(new BoardPos(selected.x, selected.y - l, selected.z + l));
+                } else {
+                    // nothing
+                }
+                break;
+            }
+        }
+    }
+    // y- z-
+    for (var l = 1; l < boardLength; l++) {
+        if (((selected.y - l) >= 0) && ((selected.z - l) >= 0)) {
+            if (typeBoard[selected.x][selected.y - l][selected.z - l] == PIECE.BLANK) {
+                moveToList.push(new BoardPos(selected.x, selected.y - l, selected.z - l));
+            } else {
+                if (colourBoard[selected.x][selected.y - l][selected.z - l] != turn) {
+                    moveToList.push(new BoardPos(selected.x, selected.y - l, selected.z - l));
+                } else {
+                    // nothing
+                }
+                break;
+            }
+        }
+    }
 }
 
-function is_image(url, callback, errorcallback) {
-    var img = new Image();
-    if (typeof(errorcallback) === "function") {
-        img.onerror = function() { errorcallback(); }
+function calculateQueenMove() {
+    if (countBoard[selected.x][selected.y][selected.z] == 0) {
+        // z+
+        for (var l = 1; l < boardLength; l++) {
+            if (selected.z + l <= 7) {
+                if (typeBoard[selected.x][selected.y][selected.z + l] == PIECE.BLANK) {
+                    moveToList.push(new BoardPos(selected.x, selected.y, selected.z + l));
+                } else {
+                    if (colourBoard[selected.x][selected.y][selected.z + l] != turn) {
+                        moveToList.push(new BoardPos(selected.x, selected.y, selected.z + l));
+                    } else {
+                        // nothing
+                    }
+                    break;
+                }
+            }
+        }
+        // z-
+        for (var l = -1; l > -boardLength; l--) {
+            if (selected.z + l >= 0) {
+                if (typeBoard[selected.x][selected.y][selected.z + l] == PIECE.BLANK) {
+                    moveToList.push(new BoardPos(selected.x, selected.y, selected.z + l));
+                } else {
+                    if (colourBoard[selected.x][selected.y][selected.z + l] != turn) {
+                        moveToList.push(new BoardPos(selected.x, selected.y, selected.z + l));
+                    } else {
+                        // nothing
+                    }
+                    break;
+                }
+            }
+        }
     } else {
-        img.onerror = function() { return false; }
+        calculateRookMove();
+        calculateBishopMove();
     }
-    if (typeof(callback) === "function") {
-        img.onload = function() { callback(); }
+}
+
+function calculateKingMove() {
+    for (var l = -1; l <= 1; l++) {
+        for (var m = -1; m <= 1; m++) {
+            for (var n = -1; n <= 1; n++) {
+                if (((selected.x + l) >= 0 && (selected.x + l) <= 7) && ((selected.y + m) >= 0 && (selected.y + m) <= 7) && ((selected.z + n) >= 0 && (selected.z + n) <= 7)) {
+                    if (typeBoard[selected.x + l][selected.y + m][selected.z + n] == PIECE.BLANK || colourBoard[selected.x + l][selected.y + m][selected.z + n] != turn) {
+                        moveToList.push(new BoardPos(selected.x + l, selected.y + m, selected.z + n))
+                    }
+                }
+            }
+        }
+    }
+}
+
+function placePiece(x, y, z, type, col, moveCount) {
+    typeBoard[x][y][z] = type;
+    colourBoard[x][y][z] = col;
+    countBoard[x][y][z] = moveCount;
+}
+
+var pTypeBoard;
+var pColourBoard;
+var pCountBoard;
+var incheck;
+var toConvert;
+var rMoveToList;
+function drawMoveToList() {
+    rMoveToList = [];
+    for (var i = 0; i < moveToList.length; i++) {
+        rMoveToList.push(moveToList[i]);
+    }
+    for (var i = 0; i < rMoveToList.length; i++) {
+        ctx.beginPath();
+        if (mouseX > (rMoveToList[i].x * 54) + 40 && mouseX < (rMoveToList[i].x * 54) + 94 && mouseY > (rMoveToList[i].y * 54) + (rMoveToList[i].z * 512) + 40 && mouseY < (rMoveToList[i].y * 54) + (rMoveToList[i].z * 512) + 94) {
+            ctx.fillStyle = "#00ff0088";
+            if (mouseDown && mouseButton == CLICK.LEFT) {
+                var xForMoveList, yForMoveList, zForMoveList;
+                xForMoveList = rMoveToList[i].x;
+                yForMoveList = rMoveToList[i].y;
+                zForMoveList = rMoveToList[i].z;
+                // set p boards (in case we need to move back)
+                pTypeBoard = Array(boardLength).fill().map(() => Array(boardLength).fill().map(() => Array(boardLength).fill(-1)));
+                pColourBoard = Array(boardLength).fill().map(() => Array(boardLength).fill().map(() => Array(boardLength).fill(-1)));
+                pCountBoard = Array(boardLength).fill().map(() => Array(boardLength).fill().map(() => Array(boardLength).fill(-1)));
+                for (var l = 0; l < typeBoard.length; l++) {
+                    for (var m = 0; m < typeBoard.length; m++) {
+                        for (var n = 0; n < typeBoard.length; n++) {
+                            pTypeBoard[l][m][n] = typeBoard[l][m][n];
+                            pColourBoard[l][m][n] = colourBoard[l][m][n];
+                            pCountBoard[l][m][n] = countBoard[l][m][n];
+                        }
+                    }
+                }
+
+                // move
+                typeBoard[rMoveToList[i].x][rMoveToList[i].y][rMoveToList[i].z] = typeBoard[selected.x][selected.y][selected.z];
+                colourBoard[rMoveToList[i].x][rMoveToList[i].y][rMoveToList[i].z] = colourBoard[selected.x][selected.y][selected.z];
+                countBoard[rMoveToList[i].x][rMoveToList[i].y][rMoveToList[i].z] = countBoard[selected.x][selected.y][selected.z] + 1;
+
+                typeBoard[selected.x][selected.y][selected.z] = -1;
+                countBoard[selected.x][selected.y][selected.z] = 0;
+
+                // append to movelist
+                if (turn == COLOUR.BLACK) {
+                    moveList += "KQBNR "[pTypeBoard[selected.x][selected.y][selected.z]] + "abcdefgh"[selected.x] + "87654321"[selected.y] + "αβγδεζηθ"[selected.z] + "-";
+                    moveList += "KQBNR "[typeBoard[rMoveToList[i].x][rMoveToList[i].y][rMoveToList[i].z]] + "abcdefgh"[rMoveToList[i].x] + "87654321"[rMoveToList[i].y] + "αβγδεζηθ"[rMoveToList[i].z] + "\n";
+                } else {
+                    moveList += "KQBNR "[pTypeBoard[selected.x][selected.y][selected.z]] + "abcdefgh"[selected.x] + "87654321"[selected.y] + "αβγδεζηθ"[selected.z] + "-";
+                    moveList += "KQBNR "[typeBoard[rMoveToList[i].x][rMoveToList[i].y][rMoveToList[i].z]] + "abcdefgh"[rMoveToList[i].x] + "87654321"[rMoveToList[i].y] + "αβγδεζηθ"[rMoveToList[i].z] + "\\";
+                }
+                moveToList = [];
+
+                // check if in check
+                checkCheck();
+                incheck = false;
+                for (var l = 0; l < checkBoard.length; l++) {
+                    for (var m = 0; m < checkBoard.length; m++) {
+                        for (var n = 0; n < checkBoard.length; n++) {
+                            if (checkBoard[l][m][n] == 1 && colourBoard[l][m][n] == turn) {
+                                incheck = true;
+                            }
+                        }
+                    }
+                }
+                if (incheck) {
+                    // if so, reset board
+                    typeBoard = pTypeBoard;
+                    colourBoard = pColourBoard;
+                    countBoard = pCountBoard;
+                    checkCheck();
+
+                    moveList = moveList.slice(0, -10);
+                } else {
+                    // otherwise, advance turn
+                    turn = (turn + 1) % 2;
+
+                    if (pTypeBoard[xForMoveList][yForMoveList][zForMoveList] != PIECE.BLANK) {
+                        moveList = moveList.slice(0, moveList.length - 4) + "x" + moveList.slice(moveList.length - 4);
+                        switch (pTypeBoard[xForMoveList][yForMoveList][zForMoveList]) {
+                            case (PIECE.PAWN): {
+                                if (turn == COLOUR.WHITE) {
+                                    capturedCounts[0]++;
+                                } else {
+                                    capturedCounts[5]++;
+                                }
+                                break;
+                            }
+                            case (PIECE.KNIGHT): {
+                                if (turn == COLOUR.WHITE) {
+                                    capturedCounts[1]++;
+                                } else {
+                                    capturedCounts[6]++;
+                                }
+                                break;
+                            }
+                            case (PIECE.BISHOP): {
+                                if (turn == COLOUR.WHITE) {
+                                    capturedCounts[2]++;
+                                } else {
+                                    capturedCounts[7]++;
+                                }
+                                break;
+                            }
+                            case (PIECE.ROOK): {
+                                if (turn == COLOUR.WHITE) {
+                                    capturedCounts[3]++;
+                                } else {
+                                    capturedCounts[8]++;
+                                }
+                                break;
+                            }
+                            case (PIECE.QUEEN): {
+                                if (turn == COLOUR.WHITE) {
+                                    capturedCounts[4]++;
+                                } else {
+                                    capturedCounts[9]++;
+                                }
+                                break;
+                            }
+                        }
+                    }
+
+                    // set p boards to new config
+                    for (var l = 0; l < typeBoard.length; l++) {
+                        for (var m = 0; m < typeBoard.length; m++) {
+                            for (var n = 0; n < typeBoard.length; n++) {
+                                pTypeBoard[l][m][n] = typeBoard[l][m][n];
+                                pColourBoard[l][m][n] = colourBoard[l][m][n];
+                                pCountBoard[l][m][n] = countBoard[l][m][n];
+                            }
+                        }
+                    }
+
+                    toConvert = [];
+                    
+                    // check king checkmate
+                    checkList = [];
+                    checkBoard = Array(boardLength).fill().map(() => Array(boardLength).fill().map(() => Array(boardLength).fill(0)));
+                    turn = (turn + 1) % 2;
+                    findAllThreatened();
+                    turn = (turn + 1) % 2;
+
+                    var check1Board = Array(boardLength).fill().map(() => Array(boardLength).fill().map(() => Array(boardLength).fill(0)));
+                    for (var l = 0; l < checkBoard.length; l++) {
+                        for (var m = 0; m < checkBoard.length; m++) {
+                            for (var n = 0; n < checkBoard.length; n++) {
+                                check1Board[l][m][n] = checkBoard[l][m][n];
+                            }
+                        }
+                    }
+                    for (var l = 0; l < check1Board.length; l++) {
+                        for (var m = 0; m < check1Board.length; m++) {
+                            for (var n = 0; n < check1Board.length; n++) {
+                                if (check1Board[l][m][n] == 1 && colourBoard[l][m][n] == turn) {
+                                    moveList = moveList.slice(0, moveList.length - 1) + "+" + moveList.slice(moveList.length - 1);
+                                    var checkmate = true;
+                                    for (var l2 = 0; l2 < check1Board.length; l2++) {
+                                        for (var m2 = 0; m2 < check1Board.length; m2++) {
+                                            for (var n2 = 0; n2 < check1Board.length; n2++) {
+                                                if (typeBoard[l2][m2][n2] != PIECE.BLANK && colourBoard[l2][m2][n2] == turn) {
+                                                    selected.set(l2, m2, n2);
+                                                    calculateMoveToList();
+                                                    var tMoveToList = [];
+                                                    for (var r = 0; r < moveToList.length; r++) {
+                                                        tMoveToList.push(moveToList[r]);
+                                                    }
+                                                    moveToList = [];
+                                                    
+                                                    for (var s = 0; s < tMoveToList.length; s++) {
+                                                        // test move
+                                                        typeBoard[tMoveToList[s].x][tMoveToList[s].y][tMoveToList[s].z] = typeBoard[selected.x][selected.y][selected.z];
+                                                        colourBoard[tMoveToList[s].x][tMoveToList[s].y][tMoveToList[s].z] = colourBoard[selected.x][selected.y][selected.z];
+                                                        countBoard[tMoveToList[s].x][tMoveToList[s].y][tMoveToList[s].z] = countBoard[selected.x][selected.y][selected.z] + 1;
+
+                                                        typeBoard[selected.x][selected.y][selected.z] = -1;
+                                                        countBoard[selected.x][selected.y][selected.z] = 0;
+
+                                                        // check if in check
+                                                        checkList = [];
+                                                        checkBoard = Array(boardLength).fill().map(() => Array(boardLength).fill().map(() => Array(boardLength).fill(0)));
+                                                        turn = (turn + 1) % 2;
+                                                        findAllThreatened();
+                                                        turn = (turn + 1) % 2;
+
+                                                        incheck = false;
+                                                        for (var l3 = 0; l3 < checkBoard.length; l3++) {
+                                                            for (var m3 = 0; m3 < checkBoard.length; m3++) {
+                                                                for (var n3 = 0; n3 < checkBoard.length; n3++) {
+                                                                    if (checkBoard[l3][m3][n3] == 1 && colourBoard[l3][m3][n3] == turn) {
+                                                                        console.log(l3 + "," + m3 + "," + n3);
+                                                                        incheck = true;
+                                                                    }
+                                                                }
+                                                            }
+                                                        }
+
+                                                        if (!incheck) {
+                                                            checkmate = false;
+                                                            console.log(tMoveToList[s]);
+                                                        }
+
+                                                        // reset boards for next iteration
+                                                        for (var ll = 0; ll < typeBoard.length; ll++) {
+                                                            for (var mm = 0; mm < typeBoard.length; mm++) {
+                                                                for (var nn = 0; nn < typeBoard.length; nn++) {
+                                                                    typeBoard[ll][mm][nn] = pTypeBoard[ll][mm][nn];
+                                                                    colourBoard[ll][mm][nn] = pColourBoard[ll][mm][nn];
+                                                                    countBoard[ll][mm][nn] = pCountBoard[ll][mm][nn];
+                                                                }
+                                                            }
+                                                        }
+                                                    }
+                                                }
+                                            }
+                                        }
+                                    }
+                                    if (checkmate == true) {
+                                        // turn king to other colour
+                                        console.log("e")
+                                        toConvert.push(new BoardPos(l, m, n));
+                                    }
+                                    moveToList = [];
+                                    // selected.set(l, m, n);
+                                    // calculateMoveToList(); // get moves king can make
+                                    // // put them in tMoveToList
+                                    // var tMoveToList = [];
+                                    // for (var r = 0; r < moveToList.length; r++) {
+                                    //     tMoveToList.push(moveToList[r]);
+                                    //     console.log(tMoveToList[r])
+                                    // }
+                                    // moveToList = [];
+                                    // // for (var p = 0; p < boardLength; p++) {
+                                    // //     for (var q = 0; q < boardLength; q++) {
+                                    // //         for (var r = 0; r < boardLength; r++) {
+                                    // //             if (colourBoard[p][q][r] != turn && typeBoard[p][q][r] != PIECE.BLANK) {
+                                    // //                 selected.set(p, q, r);
+                                    // //                 switch (typeBoard[selected.x][selected.y][selected.z]) {
+                                    // //                     case (PIECE.PAWN): {
+                                    // //                         calculatePawnMove();
+                                    // //                         break;
+                                    // //                     }
+                                    // //                     case (PIECE.KNIGHT): {
+                                    // //                         calculateKnightMove();
+                                    // //                         break;
+                                    // //                     }
+                                    // //                     case (PIECE.ROOK): {
+                                    // //                         calculateRookMove();
+                                    // //                         break;
+                                    // //                     }
+                                    // //                     case (PIECE.BISHOP): {
+                                    // //                         calculateBishopMove();
+                                    // //                         break;
+                                    // //                     }
+                                    // //                     case (PIECE.QUEEN): {
+                                    // //                         calculateQueenMove();
+                                    // //                         break;
+                                    // //                     }
+                                    // //                     case (PIECE.KING): {
+                                    // //                         calculateKingMove();
+                                    // //                         break;
+                                    // //                     }
+                                    // //                     default: {
+                                    // //                         break;
+                                    // //                     }
+                                    // //                 }
+                                    // //             }
+                                    // //         }
+                                    // //     }
+                                    // // }
+                                    // // var tempBoard = Array(boardLength).fill().map(() => Array(boardLength).fill().map(() => Array(boardLength).fill(0)));
+                                    // // for (var s = 0; s < moveToList.length; s++) {
+                                    // //     tempBoard[moveToList[s].x][moveToList[s].y][moveToList[s].z] = 1;
+                                    // // }
+                                    // selected.set(l, m, n);
+                                    // var checkmate = true;
+                                    // for (var s = 0; s < tMoveToList.length; s++) {
+                                    //     // test move
+                                    //     typeBoard[tMoveToList[s].x][tMoveToList[s].y][tMoveToList[s].z] = typeBoard[selected.x][selected.y][selected.z];
+                                    //     colourBoard[tMoveToList[s].x][tMoveToList[s].y][tMoveToList[s].z] = colourBoard[selected.x][selected.y][selected.z];
+                                    //     countBoard[tMoveToList[s].x][tMoveToList[s].y][tMoveToList[s].z] = countBoard[selected.x][selected.y][selected.z] + 1;
+
+                                    //     typeBoard[selected.x][selected.y][selected.z] = -1;
+                                    //     countBoard[selected.x][selected.y][selected.z] = 0;
+
+                                    //     // check if in check
+                                    //     checkList = [];
+                                    //     checkBoard = Array(boardLength).fill().map(() => Array(boardLength).fill().map(() => Array(boardLength).fill(0)));
+                                    //     turn = (turn + 1) % 2;
+                                    //     findAllThreatened();
+                                    //     turn = (turn + 1) % 2;
+
+                                    //     incheck = false;
+                                    //     for (var l2 = 0; l2 < checkBoard.length; l2++) {
+                                    //         for (var m2 = 0; m2 < checkBoard.length; m2++) {
+                                    //             for (var n2 = 0; n2 < checkBoard.length; n2++) {
+                                    //                 if (checkBoard[l2][m2][n2] == 1 && colourBoard[l2][m2][n2] == turn) {
+                                    //                     console.log(l2 + "," + m2 + "," + n2);
+                                    //                     incheck = true;
+                                    //                 }
+                                    //             }
+                                    //         }
+                                    //     }
+
+                                    //     if (!incheck) {
+                                    //         checkmate = false;
+                                    //         console.log(tMoveToList[s]);
+                                    //     }
+
+                                    //     // reset boards for next iteration
+                                    //     for (var ll = 0; ll < typeBoard.length; ll++) {
+                                    //         for (var mm = 0; mm < typeBoard.length; mm++) {
+                                    //             for (var nn = 0; nn < typeBoard.length; nn++) {
+                                    //                 typeBoard[ll][mm][nn] = pTypeBoard[ll][mm][nn];
+                                    //                 colourBoard[ll][mm][nn] = pColourBoard[ll][mm][nn];
+                                    //                 countBoard[ll][mm][nn] = pCountBoard[ll][mm][nn];
+                                    //             }
+                                    //         }
+                                    //     }
+                    
+                                    //     // typeBoard = pTypeBoard;
+                                    //     // colourBoard = pColourBoard;
+                                    //     // countBoard = pCountBoard;
+                    
+                                    //     // if (tempBoard[tMoveToList[s].x][tMoveToList[s].y][tMoveToList[s].z] == 0) {
+                                    //     //     checkmate = false;
+                                    //     // }
+                                    // }
+                                    // if (checkmate == true) {
+                                    //     // turn king to other colour
+                                    //     console.log("e")
+                                    //     toConvert.push(new BoardPos(l, m, n));
+                                    // }
+                                    // moveToList = [];
+                                }
+                            }
+                        }
+                    }
+                    // convert kings
+                    for (var urmom = 0; urmom < toConvert.length; urmom++) {
+                        colourBoard[toConvert[urmom].x][toConvert[urmom].y][toConvert[urmom].z] = ((turn + 1) % 2);
+                        check1Board[toConvert[urmom].x][toConvert[urmom].y][toConvert[urmom].z] = 0;
+                        moveList = moveList.slice(0, moveList.length - 2) + "#" + moveList.slice(moveList.length - 1);
+                    }
+                    // count kings
+                    var whiteKingCount = 0;
+                    var blackKingCount = 0;
+                    for (var l = 0; l < typeBoard.length; l++) {
+                        for (var m = 0; m < typeBoard.length; m++) {
+                            for (var n = 0; n < typeBoard.length; n++) {
+                                if (typeBoard[l][m][n] == PIECE.KING && colourBoard[l][m][n] == COLOUR.WHITE) {
+                                    whiteKingCount++;
+                                }
+                                if (typeBoard[l][m][n] == PIECE.KING && colourBoard[l][m][n] == COLOUR.BLACK) {
+                                    blackKingCount++;
+                                }
+                            }
+                        }
+                    }
+                    if (whiteKingCount == 0) {
+                        moveList += "0-1 Black win";
+                        console.log(moveList);
+                    }
+                    if (blackKingCount == 0) {
+                        moveList += "1-0 White win";
+                        console.log(moveList);
+                    }
+                }
+            } else {
+                ctx.fillRect((moveToList[i].x * 54) + 40, (moveToList[i].y * 54) + (moveToList[i].z * 512) + 40, 54, 54)
+            }
+        } else {
+            ctx.fillStyle = "#00ff0044";
+            ctx.fillRect((rMoveToList[i].x * 54) + 40, (rMoveToList[i].y * 54) + (rMoveToList[i].z * 512) + 40, 54, 54)
+        }
+    }
+}
+
+var threatList = [];
+function moveToListToThreatList() {
+    for (var l = 0; l < moveToList.length; l++) {
+        threatList.push(moveToList[l]);
+    }
+    moveToList = [];
+}
+
+function drawThreatList() {
+    for (var i = 0; i < threatList.length; i++) {
+        ctx.beginPath();
+        ctx.fillStyle = "#ffff0088";
+        ctx.fillRect((threatList[i].x * 54) + 40, (threatList[i].y * 54) + (threatList[i].z * 512) + 40, 54, 54)
+    }
+}
+
+function drawCheck() {
+    for (var i = 0; i < boardLength; i++) {
+        for (var j = 0; j < boardLength; j++) {
+            for (var k = 0; k < boardLength; k++) {
+                if (checkBoard[i][j][k] == 1) {
+                    ctx.beginPath();
+                    ctx.fillStyle = "#ff000088";
+                    ctx.fillRect((i * 54) + 40, (j * 54) + (k * 512) + 40, 54, 54)
+                }
+            }
+        }
+    }
+}
+
+function clearBoard() {
+    typeBoard = Array(boardLength).fill().map(() => Array(boardLength).fill().map(() => Array(boardLength).fill(-1)));
+    colourBoard = Array(boardLength).fill().map(() => Array(boardLength).fill().map(() => Array(boardLength).fill(-1)));
+    countBoard = Array(boardLength).fill().map(() => Array(boardLength).fill().map(() => Array(boardLength).fill(0)));
+}
+
+var titlePieceX = 300;
+var titlePieceMoveDir = 2 * (Math.round(Math.random()) - 0.5);
+function drawTitleBackground() {
+    // black background
+    ctx.beginPath();
+    ctx.fillStyle = "#000000";
+    ctx.fillRect(0, 0, 1024, 4096);
+    ctx.beginPath();
+    // dark brown
+    ctx.fillStyle = "#442200";
+    ctx.fillRect(256, 0, 512, 512);
+    // light brown
+    ctx.beginPath();
+    ctx.fillStyle = "#884400";
+    ctx.fillRect(264, 8, 496, 496);
+    // title text
+    ctx.beginPath();
+    ctx.fillStyle = "#000000";
+    ctx.font = "75px Arial";
+    ctx.fillText("Chess 3D", 345, 90);
+    ctx.beginPath();
+    ctx.fillStyle = "#ffffff";
+    ctx.font = "75px Arial";
+    ctx.fillText("Chess 3D", 340, 85);
+    // local button
+    ctx.beginPath();
+    if (mouseX > 470 && mouseX < 570 && mouseY > 196 && mouseY < 226) {
+        ctx.fillStyle = "#cc8800";
+        if (mouseDown) {
+            gameScreen = SCREENTYPE.TITLE_TO_LOCALGAME;
+        }
     } else {
-        img.onload = function() { return true; }
+        ctx.fillStyle = "#663300";
     }
-    img.src = url;
+    ctx.fillRect(470, 196, 100, 30);
+    ctx.beginPath();
+    ctx.fillStyle = "#ffffff";
+    ctx.font = "25px Arial";
+    ctx.fillText("LOCAL", 480, 220);
+    // multi button
+    ctx.beginPath();
+    if (mouseX > 470 && mouseX < 570 && mouseY > 236 && mouseY < 266) {
+        ctx.fillStyle = "#cc8800";
+        if (mouseDown) {
+            gameScreen = SCREENTYPE.TITLE_TO_ONLINEGAME;
+        }
+    } else {
+        ctx.fillStyle = "#663300";
+    }
+    ctx.fillRect(470, 236, 100, 30);
+    ctx.beginPath();
+    ctx.fillStyle = "#ffffff";
+    ctx.font = "25px Arial";
+    ctx.fillText("ONLINE", 473, 260);
+    // settings button
+    ctx.beginPath();
+    if (mouseX > 470 && mouseX < 570 && mouseY > 276 && mouseY < 306) {
+        ctx.fillStyle = "#cc8800";
+        if (mouseDown) {
+            gameScreen = SCREENTYPE.TITLE_TO_SETTINGS;
+        }
+    } else {
+        ctx.fillStyle = "#663300";
+    }
+    ctx.fillRect(470, 276, 100, 30);
+    ctx.beginPath();
+    ctx.fillStyle = "#ffffff";
+    ctx.font = "25px Arial";
+    ctx.fillText("OPTION", 472, 300);
+    // moving bishop
+    if (mouseX > 450 && mouseX < 600 && mouseY > 190 && mouseY < 325) {
+        titlePieceX += ((300 + (270 * titlePieceMoveDir)) - titlePieceX) / 5;
+    } else {
+        titlePieceX += (300 - titlePieceX) / 5;
+    }
+    if (Math.abs(titlePieceX - 300) / 300 < 0.1) {
+        titlePieceMoveDir = 2 * (Math.round(Math.random()) - 0.5);
+    }
+    ctx.drawImage(spritesheet, (1280/3), 0, 213, 213, titlePieceX, 70, 450, 450);
+    // dark brown (when bishop moves, cover)
+    ctx.beginPath();
+    ctx.fillStyle = "#442200";
+    ctx.fillRect(256, 0, 8, 512);
+    ctx.fillRect(760, 0, 8, 512);
+    // black (when bishop moves, cover)
+    ctx.beginPath();
+    ctx.fillStyle = "#000000";
+    ctx.fillRect(0, 0, 256, 512);
+    ctx.fillRect(768, 0, 256, 512);
 }
 
-function checkUrl(supposed) {
-    try {
-        new URL(supposed);
-        return true;
-    } catch (err) {
-        return false;
+var musicToggle = false;
+var settingsDelay;
+function drawSettingsBackground() {
+    settingsDelay++;
+
+    // black background
+    ctx.beginPath();
+    ctx.fillStyle = "#000000";
+    ctx.fillRect(0, 0, 1024, 4096);
+    ctx.beginPath();
+    // dark brown
+    ctx.fillStyle = "#442200";
+    ctx.fillRect(256, 0, 512, 512);
+    // light brown
+    ctx.beginPath();
+    ctx.fillStyle = "#884400";
+    ctx.fillRect(264, 8, 496, 496);
+    // settings title
+    ctx.beginPath();
+    ctx.fillStyle = "#ffffff";
+    ctx.font = "25px Arial";
+    ctx.fillText("Settings", 270, 35);
+    // music toggle
+    ctx.beginPath();
+    if (mouseX > 270 && mouseX < 370 && mouseY > 50 && mouseY < 80) {
+        if (musicToggle) {
+            ctx.fillStyle = "#00ff00";
+        } else {
+            ctx.fillStyle = "#ff0000";
+        }
+        if (mouseDown && settingsDelay > 15) {
+            if (musicToggle) {
+                musicToggle = false;
+                bluebird.pause();
+            } else {
+                musicToggle = true;
+                bluebird.play();
+            }
+            settingsDelay = 0;
+        }
+    } else {
+        if (musicToggle) {
+            ctx.fillStyle = "#008800";
+        } else {
+            ctx.fillStyle = "#880000";
+        }
     }
+    ctx.fillRect(270, 50, 100, 30);
+    ctx.beginPath();
+    ctx.fillStyle = "#ffffff";
+    ctx.font = "25px Arial";
+    ctx.fillText("Music", 284, 74);
+    // back button
+    ctx.beginPath();
+    if (mouseX > 670 && mouseX < 750 && mouseY > 460 && mouseY < 490) {
+        ctx.fillStyle = "#cc8800";
+        if (mouseDown) {
+            gameScreen = SCREENTYPE.SETTINGS_TO_TITLE;
+        }
+    } else {
+        ctx.fillStyle = "#663300";
+    }
+    ctx.fillRect(670, 460, 80, 30);
+    ctx.beginPath();
+    ctx.fillStyle = "#ffffff";
+    ctx.font = "25px Arial";
+    ctx.fillText("Back", 681, 484);
 }
 
-function sleep(milliseconds) {
-    var start = new Date().getTime();
-    for (var i = 0; i < 1e7; i++) {
-        if ((new Date().getTime() - start) > milliseconds){
+gameScreen = SCREENTYPE.TITLE;
+
+function main() {
+    switch (gameScreen) {
+        case (SCREENTYPE.TITLE): {
+            drawTitleBackground();
+            break;
+        }
+        case (SCREENTYPE.TITLE_TO_LOCALGAME): {
+            initBoard();
+            gameScreen = SCREENTYPE.LOCALGAME;
+            break;
+        }
+        case (SCREENTYPE.TITLE_TO_SETTINGS): {
+            settingsDelay = 15;
+            gameScreen = SCREENTYPE.SETTINGS;
+            break;
+        }
+        case (SCREENTYPE.SETTINGS): {
+            drawSettingsBackground();
+            break;
+        }
+        case (SCREENTYPE.SETTINGS_TO_TITLE): {
+            titlePieceX = 300;
+            gameScreen = SCREENTYPE.TITLE;
+            break;
+        }
+        case (SCREENTYPE.LOCALGAME): {
+            drawBackground();
+            drawBoard();
+            drawMoveToList();
+            drawThreatList();
+            drawCheck();
+            break;
+        }
+        default: {
             break;
         }
     }
+    window.requestAnimationFrame(main);
 }
-
-var cancelledCaret = /\\\^/g;
-var cancelledGrave = /\\\`/g;
-var cancelledTilde = /\\~/g;
-var cancelledBackslash = /\\\\/g;
-var boldRegex = /(\^\^[^\^]+\^\^)+/g; //          /(\*\*[^\*]+\*\*)+/g           /(<[^\*<]*\*\*[^\*]*\*\*[^\*>]*>)+/g
-var italicRegex1 = /(\^[^\^]+\^)+/g;
-var underlineRegex = /(\`\`[^\`]+\`\`)+/g;
-var italicRegex2 = /(\`[^\`]+\`)+/g;
-var strikethroughRegex = /(~[^~]+~)+/g;
-function stylify(text) {
-    return text.replace(cancelledCaret, "&#94;").replace(cancelledGrave, "&#96;").replace(cancelledTilde, "&#126;").replace(cancelledBackslash, "&#92;").replace(boldRegex, function(matched) {
-        return "<b>" + matched.substring(2, matched.length - 2) + "</b>";
-    }).replace(italicRegex1, function (matched) {
-        return "<i>" + matched.substring(1, matched.length - 1) + "</i>";
-    }).replace(underlineRegex, function (matched) {
-        return "<u>" + matched.substring(2, matched.length - 2) + "</u>";
-    }).replace(italicRegex2, function (matched) {
-        return "<i>" + matched.substring(1, matched.length - 1) + "</i>";
-    }).replace(strikethroughRegex, function (matched) {
-        return "<del>" + matched.substring(1, matched.length - 1) + "</del>";
-    });
-}
-
-setkijetesantakalu();
+window.requestAnimationFrame(main);
