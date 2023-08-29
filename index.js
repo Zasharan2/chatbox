@@ -247,7 +247,7 @@ function loadchatroom(chatName, createorjoin) {
 
         // get date to append to text
         today = new Date();
-        options = { weekday: undefined, year: 'numeric', month: 'numeric', day: 'numeric', hour: "numeric", minute: "numeric", second: "numeric" };
+        options = { weekday: undefined, year: 'numeric', month: 'numeric', day: 'numeric', hour: "numeric", minute: "numeric", second: "numeric", hour12: false };
 
         // check the user hasn't sent anything within the second (if so they are likely spamming)
         if (today.toLocaleDateString("en-US", options) != lastmessagesenttime.toLocaleDateString("en-US", options)) {
